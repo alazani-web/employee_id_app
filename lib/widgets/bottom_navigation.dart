@@ -1,134 +1,215 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
 
 class BottomNavigation extends StatelessWidget {
-  final String currentPage;
-  final Function(String) onNavigate;
+
+  final int currentIndex;
+  final Function(int) onTap;
+
 
   const BottomNavigation({
+
     super.key,
-    required this.currentPage,
-    required this.onNavigate,
+
+    required this.currentIndex,
+
+    required this.onTap,
+
   });
+
+
 
   @override
   Widget build(BuildContext context) {
-    final Color blue = const Color(0xff2864D7);
-    final Color grey = const Color(0xff7A8495);
+
 
     return Directionality(
+
       textDirection: TextDirection.rtl,
+
+
       child: Container(
-        height: 82,
+
         decoration: BoxDecoration(
+
           color: Colors.white,
+
           borderRadius: const BorderRadius.only(
+
             topLeft: Radius.circular(25),
+
             topRight: Radius.circular(25),
+
           ),
+
+
           boxShadow: [
+
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+
+              color: Colors.black.withValues(alpha: 0.05),
+
               blurRadius: 10,
+
               offset: const Offset(0, -3),
-            )
+
+            ),
+
           ],
+
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            // 1. الرئيسية
-            navItem(
-              "home",
-              "الرئيسية",
-              Icons.home_outlined,
-              Icons.home,
-              blue,
-              grey,
+
+
+
+        child: BottomNavigationBar(
+
+
+          currentIndex: currentIndex,
+
+
+          onTap: onTap,
+
+
+          type: BottomNavigationBarType.fixed,
+
+
+          backgroundColor: Colors.transparent,
+
+
+          elevation: 0,
+
+
+          selectedItemColor: const Color(0xff2864D7),
+
+
+          unselectedItemColor: const Color(0xff7A8495),
+
+
+
+          selectedLabelStyle: const TextStyle(
+
+            fontSize: 13,
+
+            fontWeight: FontWeight.bold,
+
+          ),
+
+
+
+          unselectedLabelStyle: const TextStyle(
+
+            fontSize: 13,
+
+          ),
+
+
+
+          items: [
+
+
+
+            const BottomNavigationBarItem(
+
+              icon: Icon(Icons.home_outlined),
+
+              activeIcon: Icon(Icons.home),
+
+              label: "الرئيسية",
+
             ),
-            // 2. الموظفين
-            navItem(
-              "employees",
-              "الموظفين",
-              Icons.people_outline,
-              Icons.people,
-              blue,
-              grey,
+
+
+
+            const BottomNavigationBarItem(
+
+              icon: Icon(Icons.people_outline),
+
+              activeIcon: Icon(Icons.people),
+
+              label: "الموظفين",
+
             ),
-            // 3. الزيارات (أيقونة الطائرة المائلة تماماً كما في الصورة)
-            navItem(
-              "visits",
-              "الزيارات",
-              Icons.flight_outlined,
-              Icons.flight,
-              blue,
-              grey,
+
+
+
+            const BottomNavigationBarItem(
+
+              icon: Icon(Icons.flight_outlined),
+
+              activeIcon: Icon(Icons.flight),
+
+              label: "الزيارات",
+
             ),
-            // 4. الوثائق (أيقونة المجلد المفتوح)
-            navItem(
-              "documents",
-              "الوثائق",
-              Icons.folder_open_outlined,
-              Icons.folder,
-              blue,
-              grey,
+
+
+
+            BottomNavigationBarItem(
+
+              icon: SvgPicture.asset(
+
+                "assets/icons/document.svg",
+
+                width: 24,
+
+                height: 24,
+
+                colorFilter: const ColorFilter.mode(
+
+                  Color(0xff7A8495),
+
+                  BlendMode.srcIn,
+
+                ),
+
+              ),
+
+
+              activeIcon: SvgPicture.asset(
+
+                "assets/icons/document.svg",
+
+                width: 24,
+
+                height: 24,
+
+                colorFilter: const ColorFilter.mode(
+
+                  Color(0xff2864D7),
+
+                  BlendMode.srcIn,
+
+                ),
+
+              ),
+
+
+              label: "الوثائق",
+
             ),
-            // 5. التقارير
-            navItem(
-              "reports",
-              "التقارير",
-              Icons.description_outlined,
-              Icons.description,
-              blue,
-              grey,
+
+
+
+            const BottomNavigationBarItem(
+
+              icon: Icon(Icons.description_outlined),
+
+              activeIcon: Icon(Icons.description),
+
+              label: "التقارير",
+
             ),
+
+
           ],
+
         ),
+
       ),
+
     );
+
   }
 
-  Widget navItem(
-    String id,
-    String title,
-    IconData icon,
-    IconData activeIcon,
-    Color blue,
-    Color grey,
-  ) {
-    bool selected = currentPage == id;
-
-    return GestureDetector(
-      onTap: () {
-        onNavigate(id);
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            selected ? activeIcon : icon,
-            size: 26,
-            color: selected ? blue : grey,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-              color: selected ? blue : grey,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            width: 5,
-            height: 5,
-            decoration: BoxDecoration(
-              color: selected ? blue : Colors.transparent,
-              shape: BoxShape.circle,
-            ),
-          )
-        ],
-      ),
-    );
-  }
 }

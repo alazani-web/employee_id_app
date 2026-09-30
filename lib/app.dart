@@ -32,9 +32,7 @@ class _AppState extends State<App> {
 
   String currentPage = "home";
 
-
   int alertCount = 0;
-
 
 
 
@@ -48,35 +46,28 @@ class _AppState extends State<App> {
         return const EmployeesScreen();
 
 
-
       case "visits":
         return const VisitsScreen();
-
 
 
       case "documents":
         return const DocumentsScreen();
 
 
-
       case "reports":
         return const ReportsScreen();
-
 
 
       case "alerts":
         return const AlertsScreen();
 
 
-
       case "settings":
         return const SettingsScreen();
 
 
-
       case "tasks":
         return const TasksScreen();
-
 
 
       default:
@@ -85,7 +76,6 @@ class _AppState extends State<App> {
     }
 
   }
-
 
 
 
@@ -103,6 +93,37 @@ class _AppState extends State<App> {
 
 
 
+  int getCurrentIndex(){
+
+
+    switch(currentPage){
+
+
+      case "employees":
+        return 1;
+
+
+      case "visits":
+        return 2;
+
+
+      case "documents":
+        return 3;
+
+
+      case "reports":
+        return 4;
+
+
+      default:
+        return 0;
+
+    }
+
+  }
+
+
+
 
 
   @override
@@ -111,25 +132,19 @@ class _AppState extends State<App> {
 
     return MaterialApp(
 
-
       debugShowCheckedModeBanner:false,
 
 
-      title:"Employee ID App",
-
+      title:"نظام إدارة الهويات",
 
 
       theme:ThemeData(
 
-
         useMaterial3:true,
-
 
         fontFamily:"Arial",
 
-
       ),
-
 
 
 
@@ -137,7 +152,7 @@ class _AppState extends State<App> {
 
 
 
-        drawer:SideMenu(
+        drawer: SideMenu(
 
           onNavigate:navigate,
 
@@ -146,10 +161,9 @@ class _AppState extends State<App> {
 
 
 
-
         body: Builder(
 
-          builder: (context){
+          builder:(context){
 
 
             return Column(
@@ -159,50 +173,87 @@ class _AppState extends State<App> {
 
 
 
-
                 AppHeader(
-
 
                   alertCount:alertCount,
 
 
                   onMenuTap:(){
 
-
                     Scaffold.of(context).openDrawer();
-
 
                   },
 
-
                 ),
-
 
 
 
 
                 Expanded(
 
-
                   child:getCurrentPage(),
-
 
                 ),
 
 
 
 
-
                 BottomNavigation(
 
-
-                  currentPage: currentPage,
-
-
-                  onNavigate: navigate,
+                  currentIndex:getCurrentIndex(),
 
 
-                )
+                  onTap:(index){
+
+
+                    switch(index){
+
+
+                      case 0:
+
+                        navigate("home");
+
+                        break;
+
+
+
+                      case 1:
+
+                        navigate("employees");
+
+                        break;
+
+
+
+                      case 2:
+
+                        navigate("visits");
+
+                        break;
+
+
+
+                      case 3:
+
+                        navigate("documents");
+
+                        break;
+
+
+
+                      case 4:
+
+                        navigate("reports");
+
+                        break;
+
+
+                    }
+
+
+                  },
+
+                ),
 
 
 
@@ -217,9 +268,7 @@ class _AppState extends State<App> {
         ),
 
 
-
       ),
-
 
 
     );
