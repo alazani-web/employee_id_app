@@ -14,9 +14,11 @@ import 'widgets/bottom_navigation.dart';
 import 'widgets/side_menu.dart';
 
 
+
 class App extends StatefulWidget {
 
   const App({super.key});
+
 
   @override
   State<App> createState() => _AppState();
@@ -34,6 +36,7 @@ class _AppState extends State<App> {
 
 
 
+
   Widget getCurrentPage(){
 
 
@@ -41,55 +44,47 @@ class _AppState extends State<App> {
 
 
       case "employees":
-
         return const EmployeesScreen();
 
 
 
       case "visits":
-
         return const VisitsScreen();
 
 
 
       case "documents":
-
         return const DocumentsScreen();
 
 
 
       case "reports":
-
         return const ReportsScreen();
 
 
 
       case "alerts":
-
         return const AlertsScreen();
 
 
 
       case "settings":
-
         return const SettingsScreen();
 
 
 
       case "tasks":
-
         return const TasksScreen();
 
 
 
       default:
-
         return const HomeScreen();
-
 
     }
 
   }
+
 
 
 
@@ -105,6 +100,8 @@ class _AppState extends State<App> {
 
 
   }
+
+
 
 
 
@@ -136,6 +133,7 @@ class _AppState extends State<App> {
 
 
 
+
       home:Scaffold(
 
 
@@ -149,6 +147,7 @@ class _AppState extends State<App> {
 
 
 
+
         body:Column(
 
 
@@ -158,7 +157,9 @@ class _AppState extends State<App> {
 
             AppHeader(
 
+
               alertCount:alertCount,
+
 
               onMenuTap:(){
 
@@ -174,6 +175,7 @@ class _AppState extends State<App> {
 
 
 
+
             Expanded(
 
 
@@ -185,13 +187,14 @@ class _AppState extends State<App> {
 
 
 
+
             BottomNavigation(
 
 
-              currentPage:currentPage,
+              currentPage: currentPage,
 
 
-              onNavigate:navigate,
+              onNavigate: navigate,
 
 
             )

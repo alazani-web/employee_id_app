@@ -1,93 +1,339 @@
 import 'package:flutter/material.dart';
 
-class DocumentsScreen extends StatelessWidget {
+class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'أرشفة وثائق الشركة',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.upload_file, color: Colors.white, size: 18),
-                  label: const Text('رفع وثيقة', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.2,
-                children: const [
-                  DocItemCard(title: 'عقد الإيجار الرئيسي', type: 'PDF', date: '2026-01-10'),
-                  DocItemCard(title: 'السجل التجاري', type: 'PDF', date: '2026-03-15'),
-                  DocItemCard(title: 'رخصة البلديّة', type: 'Image', date: '2026-05-20'),
-                  DocItemCard(title: 'التأمينات الاجتماعية', type: 'PDF', date: '2026-02-01'),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  State<DocumentsScreen> createState() => _DocumentsScreenState();
 }
 
-class DocItemCard extends StatelessWidget {
-  final String title;
-  final String type;
-  final String date;
 
-  const DocItemCard({super.key, required this.title, required this.type, required this.date});
+class _DocumentsScreenState extends State<DocumentsScreen> {
+
+  String selectedFilter = "الكل";
+
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 3))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Icon(Icons.folder_open, color: Colors.purple, size: 28),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: Colors.purple.shade50, borderRadius: BorderRadius.circular(4)),
-                child: Text(type, style: const TextStyle(fontSize: 10, color: Colors.purple, fontWeight: FontWeight.bold)),
+
+    return Directionality(
+
+      textDirection: TextDirection.rtl,
+
+      child: Scaffold(
+
+        backgroundColor: const Color(0xffF7F8FC),
+
+
+
+        floatingActionButtonLocation:
+            FloatingActionButtonLocation.endFloat,
+
+
+
+        floatingActionButton: Directionality(
+
+          textDirection: TextDirection.ltr,
+
+          child: Padding(
+
+            padding: const EdgeInsets.only(
+              left: 20,
+              bottom: 55,
+            ),
+
+            child: FloatingActionButton(
+
+              onPressed: () {},
+
+              backgroundColor:
+                  const Color(0xff2864D7),
+
+              elevation: 5,
+
+              shape: const CircleBorder(),
+
+              child: const Icon(
+
+                Icons.add,
+
+                color: Colors.white,
+
+                size: 32,
+
               ),
-            ],
+
+            ),
+
           ),
-          const Spacer(),
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          Text('تاريخ الرفع: $date', style: const TextStyle(color: Colors.grey, fontSize: 11)),
-        ],
+
+        ),
+
+
+
+        body: SafeArea(
+
+          child: Padding(
+
+            padding: const EdgeInsets.all(16),
+
+            child: Column(
+
+              children: [
+
+
+
+                // البحث
+
+                Container(
+
+                  height: 58,
+
+                  decoration: BoxDecoration(
+
+                    color: Colors.white,
+
+                    borderRadius:
+                        BorderRadius.circular(18),
+
+                    border: Border.all(
+
+                      color: Colors.grey.shade200,
+
+                    ),
+
+                  ),
+
+
+                  child: const TextField(
+
+                    textAlign: TextAlign.right,
+
+
+                    decoration: InputDecoration(
+
+                      hintText:
+                          "البحث بالاسم أو رقم الوثيقة...",
+
+
+                      hintStyle: TextStyle(
+
+                        color: Colors.grey,
+
+                        fontSize: 16,
+
+                      ),
+
+
+                      suffixIcon: Icon(
+
+                        Icons.search,
+
+                        color: Colors.grey,
+
+                      ),
+
+
+                      border: InputBorder.none,
+
+
+                      contentPadding:
+                          EdgeInsets.symmetric(
+
+                            vertical: 18,
+
+                            horizontal: 20,
+
+                          ),
+
+                    ),
+
+                  ),
+
+                ),
+
+
+
+                const SizedBox(height: 20),
+
+
+
+                // الفلاتر
+
+                Row(
+
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
+
+                  children: [
+
+                    filterButton("الكل"),
+
+                    filterButton("نشط"),
+
+                    filterButton("تنتهي قريباً"),
+
+                    filterButton("منتهي"),
+
+                  ],
+
+                ),
+
+
+
+                const SizedBox(height: 20),
+
+
+
+
+                Expanded(
+
+                  child: Container(
+
+                    width: double.infinity,
+
+
+                    decoration: BoxDecoration(
+
+                      color: Colors.white,
+
+                      borderRadius:
+                          BorderRadius.circular(25),
+
+                    ),
+
+
+                    child: Center(
+
+                      child: Text(
+
+                        "لا توجد وثائق مسجلة",
+
+
+                        style: TextStyle(
+
+                          color:
+                              Colors.grey.shade400,
+
+                          fontSize: 18,
+
+                        ),
+
+                      ),
+
+                    ),
+
+                  ),
+
+                ),
+
+
+
+              ],
+
+            ),
+
+          ),
+
+        ),
+
       ),
+
     );
+
   }
+
+
+
+
+
+  Widget filterButton(String title) {
+
+
+    bool active =
+        selectedFilter == title;
+
+
+
+    return GestureDetector(
+
+      onTap: () {
+
+        setState(() {
+
+          selectedFilter = title;
+
+        });
+
+      },
+
+
+      child: Container(
+
+        padding:
+            const EdgeInsets.symmetric(
+
+              horizontal: 25,
+
+              vertical: 12,
+
+            ),
+
+
+
+        decoration: BoxDecoration(
+
+          color: active
+
+              ? const Color(0xff2864D7)
+
+              : Colors.white,
+
+
+
+          borderRadius:
+              BorderRadius.circular(30),
+
+
+
+          border: Border.all(
+
+            color: Colors.grey.shade200,
+
+          ),
+
+        ),
+
+
+
+        child: Text(
+
+          title,
+
+
+          style: TextStyle(
+
+            color: active
+
+                ? Colors.white
+
+                : Colors.black87,
+
+
+            fontSize: 15,
+
+
+            fontWeight:
+                FontWeight.w600,
+
+          ),
+
+        ),
+
+      ),
+
+    );
+
+  }
+
 }
