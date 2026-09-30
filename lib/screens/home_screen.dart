@@ -1,339 +1,661 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+
 
 class HomeScreen extends StatelessWidget {
+
   const HomeScreen({super.key});
 
+
   @override
   Widget build(BuildContext context) {
+
     return Directionality(
+
       textDirection: TextDirection.rtl,
+
       child: Scaffold(
-        backgroundColor: const Color(0xfff7f9fc),
+
+        backgroundColor: const Color(0xffF7F9FC),
+
         body: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+
+          padding: const EdgeInsets.all(16),
+
           child: Column(
+
             children: [
-              // لوحة التحكم
+
+
               Container(
+
                 padding: const EdgeInsets.all(14),
+
                 decoration: BoxDecoration(
+
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
+
+                  borderRadius:
+                  BorderRadius.circular(20),
+
                 ),
+
+
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                  mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
+
+
                   children: [
-                    // عنوان لوحة التحكم (اليمين)
+
+
                     Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+
+                      crossAxisAlignment:
+                      CrossAxisAlignment.end,
+
+
                       children: const [
+
                         Text(
+
                           "لوحة التحكم الرئيسية",
+
                           style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+
+                            fontSize:18,
+
+                            fontWeight:
+                            FontWeight.bold,
+
                           ),
+
                         ),
-                        SizedBox(height: 4),
+
+
+                        SizedBox(height:4),
+
+
                         Text(
+
                           "ملخص شامل لحالة النظام",
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
+
+                          style:TextStyle(
+
+                            color:Colors.grey,
+
+                            fontSize:12,
+
                           ),
+
                         ),
+
+
                       ],
+
                     ),
 
-                    // كارت التاريخ (اليسار)
+
+
                     Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xfff0f4fd),
-                        borderRadius: BorderRadius.circular(14),
+
+                      padding:
+                      const EdgeInsets.all(8),
+
+
+                      decoration:BoxDecoration(
+
+                        color:
+                        const Color(0xffEFF4FF),
+
+                        borderRadius:
+                        BorderRadius.circular(15),
+
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.calendar_today_outlined, size: 12, color: Color(0xff2962c7)),
-                              SizedBox(width: 4),
-                              Text(
-                                "اليوم",
-                                style: TextStyle(
-                                  color: Color(0xff2962c7),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 2),
+
+
+                      child:const Column(
+
+                        children:[
+
                           Text(
+
+                            "اليوم",
+
+                            style:TextStyle(
+
+                              color:
+                              Color(0xff2864D7),
+
+                              fontSize:12,
+
+                              fontWeight:
+                              FontWeight.bold,
+
+                            ),
+
+                          ),
+
+                          Text(
+
                             "الأربعاء",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+
+                            style:TextStyle(
+
+                              fontSize:12,
+
+                              fontWeight:
+                              FontWeight.bold,
+
                             ),
+
                           ),
-                          SizedBox(height: 1),
-                          Text(
-                            "٣٠ سبتمبر ٢٠٢٦",
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 9,
-                            ),
-                          ),
+
                         ],
+
                       ),
-                    ),
+
+                    )
+
+
                   ],
+
                 ),
+
               ),
 
-              const SizedBox(height: 10),
 
-              // شبكة الإحصائيات (تم تصغير الحجم لتنسيق أفضل)
+
+              const SizedBox(height:12),
+
+
+
               GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 2.8, // نسبة العرض إلى الارتفاع لتقليل ارتفاع المربع
-                children: const [
+
+                shrinkWrap:true,
+
+                physics:
+                const NeverScrollableScrollPhysics(),
+
+
+                crossAxisCount:2,
+
+                crossAxisSpacing:10,
+
+                mainAxisSpacing:10,
+
+
+                childAspectRatio:2.35,
+
+
+                children:[
+
+
                   StatCard(
-                    title: "الموظفين",
-                    count: "27",
-                    icon: Icons.people_outline,
-                    color: Color(0xff1d5cc8),
-                    background: Color(0xfff3f6fc),
+
+                    title:"الموظفين",
+
+                    count:"27",
+
+                    icon:
+                    "assets/icons/users.svg",
+
+                    color:
+                    const Color(0xff2864D7),
+
+                    background:
+                    const Color(0xffEFF4FF),
+
                   ),
+
+
+
                   StatCard(
-                    title: "الوثائق",
-                    count: "0",
-                    icon: Icons.inventory_2_outlined,
-                    color: Color(0xff1d5cc8),
-                    background: Color(0xfff3f6fc),
+
+                    title:"الوثائق",
+
+                    count:"0",
+
+                    icon:
+                    "assets/icons/folder_open.svg",
+
+                    color:
+                    const Color(0xff2864D7),
+
+                    background:
+                    const Color(0xffEFF4FF),
+
                   ),
+
+
+
                   StatCard(
-                    title: "الزيارات",
-                    count: "9",
-                    icon: Icons.calendar_today_outlined,
-                    color: Color(0xff2e7d32),
-                    background: Color(0xfff1f8f3),
+
+                    title:"التنبيهات",
+
+                    count:"18",
+
+                    icon:
+                    "assets/icons/document.svg",
+
+                    color:
+                    const Color(0xffD8792B),
+
+                    background:
+                    const Color(0xfffff5ed),
+
                   ),
+
+
+
                   StatCard(
-                    title: "التنبيهات",
-                    count: "18",
-                    icon: Icons.notifications_none_outlined,
-                    color: Color(0xffd96b27),
-                    background: Color(0xfffff6ee),
+
+                    title:"الزيارات",
+
+                    count:"9",
+
+                    icon:
+                    "assets/icons/calendar.svg",
+
+                    color:
+                    const Color(0xff3D9850),
+
+                    background:
+                    const Color(0xffEFFAF1),
+
                   ),
+
+
                 ],
+
               ),
 
-              const SizedBox(height: 10),
 
-              // حالة الترخيص (تعديل المحاذاة لليمين)
-              const InfoCard(
-                icon: Icons.check_circle_outline,
-                iconColor: Color(0xff2e7d32),
-                title: "حالة الترخيص",
-                subtitleSpan: TextSpan(
-                  children: [
-                    TextSpan(text: "مفتاح التفعيل: "),
-                    TextSpan(
-                      text: "مفعل\n",
-                      style: TextStyle(color: Color(0xff2e7d32), fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(text: "الأيام المتبقية: 12512 يوم"),
-                  ],
-                ),
-                buttonText: "إدارة الترخيص",
+
+              const SizedBox(height:14),
+
+
+
+              InfoCard(
+
+                title:"حالة الترخيص",
+
+                subtitle:
+                "مفتاح التفعيل: مفعل\nالأيام المتبقية: 12512 يوم",
+
+                button:"إدارة الترخيص",
+
               ),
 
-              const SizedBox(height: 10),
 
-              // النسخ الاحتياطي (تعديل المحاذاة لليمين)
-              const InfoCard(
-                icon: Icons.dns_outlined,
-                iconColor: Color(0xff1d5cc8),
-                title: "النسخ الاحتياطي",
-                subtitleSpan: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: "آخر نسخة احتياطية\n",
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
-                    ),
-                    TextSpan(text: "لا توجد نسخة محفوظة"),
-                  ],
-                ),
-                buttonText: "إنشاء نسخة احتياطية",
-              ),
+
+              const SizedBox(height:14),
+
+
+
+              InfoCard(
+
+                title:"النسخ الاحتياطي",
+
+                subtitle:
+                "آخر نسخة احتياطية\nلا توجد نسخة محفوظة",
+
+                button:"إنشاء نسخة احتياطية",
+
+              )
+
+
             ],
+
           ),
+
         ),
+
       ),
+
     );
+
   }
+
 }
+
+
+
 
 class StatCard extends StatelessWidget {
+
+
   final String title;
+
   final String count;
-  final IconData icon;
+
+  final String icon;
+
   final Color color;
+
   final Color background;
 
+
   const StatCard({
+
     super.key,
+
     required this.title,
+
     required this.count,
+
     required this.icon,
+
     required this.color,
+
     required this.background,
+
   });
 
+
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
+
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(14),
+
+      height:80,
+
+
+      padding:
+      const EdgeInsets.symmetric(
+
+        horizontal:10,
+
+        vertical:6,
+
       ),
-      child: Row(
-        children: [
-          // أيقونة جهة اليمين
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 8),
-          // النصوص متراصة ومحاذاتها لليمين
+
+
+      decoration:BoxDecoration(
+
+        color:background,
+
+        borderRadius:
+        BorderRadius.circular(18),
+
+      ),
+
+
+      child:Row(
+
+        mainAxisAlignment:
+        MainAxisAlignment.end,
+
+
+        children:[
+
+
           Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+
+            mainAxisAlignment:
+            MainAxisAlignment.center,
+
+
+            crossAxisAlignment:
+            CrossAxisAlignment.end,
+
+
+            children:[
+
+
               Text(
+
                 title,
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 11,
+
+                style:const TextStyle(
+
+                  color:
+                  Color(0xff7A8495),
+
+                  fontSize:12,
+
                 ),
+
               ),
+
+
+
               Text(
+
                 count,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+
+                style:TextStyle(
+
+                  color:color,
+
+                  fontSize:20,
+
+                  fontWeight:
+                  FontWeight.bold,
+
                 ),
+
               ),
+
+
             ],
+
           ),
+
+
+
+          const SizedBox(width:8),
+
+
+
+          Container(
+
+            width:32,
+
+            height:32,
+
+
+            decoration:
+            const BoxDecoration(
+
+              color:Colors.white,
+
+              shape:
+              BoxShape.circle,
+
+            ),
+
+
+            child:SvgPicture.asset(
+
+              icon,
+
+              width:18,
+
+              height:18,
+
+
+              colorFilter:
+              ColorFilter.mode(
+
+                color,
+
+                BlendMode.srcIn,
+
+              ),
+
+            ),
+
+          )
+
+
         ],
+
       ),
+
     );
+
   }
+
 }
 
+
+
 class InfoCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
+
+
   final String title;
-  final TextSpan subtitleSpan;
-  final String buttonText;
+
+  final String subtitle;
+
+  final String button;
+
 
   const InfoCard({
+
     super.key,
-    required this.icon,
-    required this.iconColor,
+
     required this.title,
-    required this.subtitleSpan,
-    required this.buttonText,
+
+    required this.subtitle,
+
+    required this.button,
+
   });
 
+
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
+
+
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+
+      padding:
+      const EdgeInsets.all(14),
+
+
+      decoration:BoxDecoration(
+
+        color:Colors.white,
+
+        borderRadius:
+        BorderRadius.circular(20),
+
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // عنوان بطاقة المعلومات والأيقونة جهة اليمين
-          Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Icon(
-                icon,
-                color: iconColor,
-                size: 20,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          RichText(
-            textAlign: TextAlign.right,
-            text: TextSpan(
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 12,
-                height: 1.4,
-              ),
-              children: [subtitleSpan],
+
+
+      child:Column(
+
+        crossAxisAlignment:
+        CrossAxisAlignment.stretch,
+
+
+        children:[
+
+
+          Text(
+
+            title,
+
+            textAlign:
+            TextAlign.right,
+
+
+            style:const TextStyle(
+
+              fontSize:17,
+
+              fontWeight:
+              FontWeight.bold,
+
             ),
+
           ),
-          const SizedBox(height: 12),
+
+
+
+          const SizedBox(height:6),
+
+
+
+          Text(
+
+            subtitle,
+
+            textAlign:
+            TextAlign.right,
+
+
+            style:const TextStyle(
+
+              color:Colors.grey,
+
+              fontSize:13,
+
+            ),
+
+          ),
+
+
+
+          const SizedBox(height:12),
+
+
+
           SizedBox(
-            height: 40,
-            child: ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff1d5cc8),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+
+            height:45,
+
+
+            child:ElevatedButton(
+
+              onPressed:(){},
+
+
+              style:ElevatedButton.styleFrom(
+
+                backgroundColor:
+                const Color(0xff2864D7),
+
+                shape:
+                RoundedRectangleBorder(
+
+                  borderRadius:
+                  BorderRadius.circular(14),
+
                 ),
+
               ),
-              child: Text(
-                buttonText,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
+
+
+              child:Text(
+
+                button,
+
+                style:
+                const TextStyle(
+
+                  color:Colors.white,
+
                 ),
+
               ),
+
             ),
-          ),
+
+          )
+
+
         ],
+
       ),
+
     );
+
   }
+
 }

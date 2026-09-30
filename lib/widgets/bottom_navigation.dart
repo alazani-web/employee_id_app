@@ -23,11 +23,9 @@ class BottomNavigation extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
 
-
     return Directionality(
 
       textDirection: TextDirection.rtl,
-
 
       child: Container(
 
@@ -43,16 +41,15 @@ class BottomNavigation extends StatelessWidget {
 
           ),
 
-
           boxShadow: [
 
             BoxShadow(
 
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(0.05),
 
               blurRadius: 10,
 
-              offset: const Offset(0, -3),
+              offset: const Offset(0,-3),
 
             ),
 
@@ -61,59 +58,39 @@ class BottomNavigation extends StatelessWidget {
         ),
 
 
-
         child: BottomNavigationBar(
-
 
           currentIndex: currentIndex,
 
-
           onTap: onTap,
-
 
           type: BottomNavigationBarType.fixed,
 
-
           backgroundColor: Colors.transparent,
-
 
           elevation: 0,
 
 
           selectedItemColor: const Color(0xff2864D7),
 
-
           unselectedItemColor: const Color(0xff7A8495),
-
-
-
-          selectedLabelStyle: const TextStyle(
-
-            fontSize: 13,
-
-            fontWeight: FontWeight.bold,
-
-          ),
-
-
-
-          unselectedLabelStyle: const TextStyle(
-
-            fontSize: 13,
-
-          ),
 
 
 
           items: [
 
 
+            BottomNavigationBarItem(
 
-            const BottomNavigationBarItem(
+              icon: iconSvg(
+                "assets/icons/home.svg",
+                false,
+              ),
 
-              icon: Icon(Icons.home_outlined),
-
-              activeIcon: Icon(Icons.home),
+              activeIcon: iconSvg(
+                "assets/icons/home.svg",
+                true,
+              ),
 
               label: "الرئيسية",
 
@@ -121,11 +98,17 @@ class BottomNavigation extends StatelessWidget {
 
 
 
-            const BottomNavigationBarItem(
+            BottomNavigationBarItem(
 
-              icon: Icon(Icons.people_outline),
+              icon: iconSvg(
+                "assets/icons/users.svg",
+                false,
+              ),
 
-              activeIcon: Icon(Icons.people),
+              activeIcon: iconSvg(
+                "assets/icons/users.svg",
+                true,
+              ),
 
               label: "الموظفين",
 
@@ -133,11 +116,18 @@ class BottomNavigation extends StatelessWidget {
 
 
 
-            const BottomNavigationBarItem(
 
-              icon: Icon(Icons.flight_outlined),
+            BottomNavigationBarItem(
 
-              activeIcon: Icon(Icons.flight),
+              icon: iconSvg(
+                "assets/icons/plane.svg",
+                false,
+              ),
+
+              activeIcon: iconSvg(
+                "assets/icons/plane.svg",
+                true,
+              ),
 
               label: "الزيارات",
 
@@ -145,49 +135,24 @@ class BottomNavigation extends StatelessWidget {
 
 
 
+
+
             BottomNavigationBarItem(
 
-              icon: SvgPicture.asset(
-
-                "assets/icons/document.svg",
-
-                width: 24,
-
-                height: 24,
-
-                colorFilter: const ColorFilter.mode(
-
-                  Color(0xff7A8495),
-
-                  BlendMode.srcIn,
-
-                ),
-
+              icon: iconSvg(
+                "assets/icons/folder_open.svg",
+                false,
               ),
 
-
-              activeIcon: SvgPicture.asset(
-
-                "assets/icons/document.svg",
-
-                width: 24,
-
-                height: 24,
-
-                colorFilter: const ColorFilter.mode(
-
-                  Color(0xff2864D7),
-
-                  BlendMode.srcIn,
-
-                ),
-
+              activeIcon: iconSvg(
+                "assets/icons/folder_open.svg",
+                true,
               ),
-
 
               label: "الوثائق",
 
             ),
+
 
 
 
@@ -205,6 +170,35 @@ class BottomNavigation extends StatelessWidget {
           ],
 
         ),
+
+      ),
+
+    );
+
+  }
+
+
+
+  Widget iconSvg(String path, bool active) {
+
+    return SvgPicture.asset(
+
+      path,
+
+      width: 24,
+
+      height: 24,
+
+
+      colorFilter: ColorFilter.mode(
+
+        active
+
+            ? const Color(0xff2864D7)
+
+            : const Color(0xff7A8495),
+
+        BlendMode.srcIn,
 
       ),
 
