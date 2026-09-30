@@ -32,6 +32,7 @@ class _AppState extends State<App> {
 
   String currentPage = "home";
 
+
   int alertCount = 0;
 
 
@@ -91,13 +92,11 @@ class _AppState extends State<App> {
 
   void navigate(String page){
 
-
     setState(() {
 
       currentPage = page;
 
     });
-
 
   }
 
@@ -148,61 +147,72 @@ class _AppState extends State<App> {
 
 
 
-        body:Column(
+        body: Builder(
+
+          builder: (context){
 
 
-          children:[
+            return Column(
 
 
-
-            AppHeader(
-
-
-              alertCount:alertCount,
-
-
-              onMenuTap:(){
-
-
-                Scaffold.of(context).openDrawer();
-
-
-              },
-
-
-            ),
+              children:[
 
 
 
 
-
-            Expanded(
-
-
-              child:getCurrentPage(),
+                AppHeader(
 
 
-            ),
+                  alertCount:alertCount,
+
+
+                  onMenuTap:(){
+
+
+                    Scaffold.of(context).openDrawer();
+
+
+                  },
+
+
+                ),
 
 
 
 
 
-            BottomNavigation(
+                Expanded(
 
 
-              currentPage: currentPage,
+                  child:getCurrentPage(),
 
 
-              onNavigate: navigate,
-
-
-            )
+                ),
 
 
 
-          ],
 
+
+                BottomNavigation(
+
+
+                  currentPage: currentPage,
+
+
+                  onNavigate: navigate,
+
+
+                )
+
+
+
+              ],
+
+
+            );
+
+
+          },
 
         ),
 
