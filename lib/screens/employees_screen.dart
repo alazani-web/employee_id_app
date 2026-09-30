@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-
 class EmployeesScreen extends StatefulWidget {
 
   const EmployeesScreen({super.key});
-
 
   @override
   State<EmployeesScreen> createState() => _EmployeesScreenState();
@@ -38,132 +36,93 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   @override
   Widget build(BuildContext context) {
 
-
     return Directionality(
-
 
       textDirection: TextDirection.rtl,
 
-
       child: Scaffold(
 
-
         backgroundColor:
-        const Color(0xfff7f9fc),
+        const Color(0xffF7F9FC),
 
 
 
         body: Column(
 
-
           children: [
-
 
 
             const SizedBox(height:15),
 
 
 
-
-            // شريط البحث
-
+            // البحث
 
             Container(
-
 
               margin:
               const EdgeInsets.symmetric(horizontal:16),
 
-
-              height:65,
-
-
-              padding:
-              const EdgeInsets.symmetric(horizontal:18),
+              height:58,
 
 
+              decoration: BoxDecoration(
 
-              decoration:BoxDecoration(
-
-
-                color:Colors.white,
-
+                color: Colors.white,
 
                 borderRadius:
-                BorderRadius.circular(22),
+                BorderRadius.circular(20),
 
+                border: Border.all(
+
+                  color: Colors.grey.shade200,
+
+                ),
 
               ),
 
 
 
-              child:TextField(
-
+              child: TextField(
 
                 controller: searchController,
 
-
-                textDirection:
-                TextDirection.rtl,
+                textAlign: TextAlign.right,
 
 
-                textAlign:
-                TextAlign.right,
+                decoration: InputDecoration(
 
-
-
-                decoration:InputDecoration(
-
-
-                  border:
-                  InputBorder.none,
-
+                  border: InputBorder.none,
 
 
                   hintText:
                   "البحث بالاسم أو رقم الهوية...",
 
 
+                  hintStyle: const TextStyle(
 
-                  hintStyle:
-                  const TextStyle(
-
-
-                    color:Colors.grey,
-
+                    color: Colors.grey,
 
                     fontSize:16,
 
-
                   ),
 
 
 
-                  suffixIcon:
-                  const Icon(
-
+                  suffixIcon: const Icon(
 
                     Icons.search,
 
-
-                    color:Colors.grey,
-
-
-                    size:30,
-
+                    color: Colors.grey,
 
                   ),
-
 
 
                 ),
 
-
               ),
 
-
             ),
-
 
 
 
@@ -174,37 +133,18 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
             // الفلاتر
 
-
             SizedBox(
-
 
               height:55,
 
 
+              child: Row(
 
-              child:ListView.builder(
-
-
-                scrollDirection:
-                Axis.horizontal,
+                mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
 
 
-
-                padding:
-                const EdgeInsets.symmetric(
-                    horizontal:16
-                ),
-
-
-
-                itemCount:
-                filters.length,
-
-
-
-                itemBuilder:
-                    (context,index){
-
+                children: List.generate(filters.length,(index){
 
 
                   bool active =
@@ -217,115 +157,87 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
                     onTap:(){
 
-
                       setState(() {
-
 
                         selectedFilter=index;
 
-
                       });
-
 
                     },
 
 
 
-                    child:Container(
+                    child: Container(
+
+                      width:90,
+
+                      height:42,
 
 
-                      width:115,
-
-
-                      margin:
-                      const EdgeInsets.only(
-                          left:10
-                      ),
-
-
-
-                      decoration:
-                      BoxDecoration(
+                      alignment:
+                      Alignment.center,
 
 
 
-                        color:active
+                      decoration: BoxDecoration(
 
-                            ? const Color(0xff2962c7)
+
+                        color: active
+
+                            ? const Color(0xff2962C7)
 
                             : Colors.white,
 
 
 
                         borderRadius:
-                        BorderRadius.circular(30),
+                        BorderRadius.circular(25),
 
 
 
-                        border:
-                        Border.all(
+                        border: Border.all(
 
                           color:
                           Colors.grey.shade200,
 
                         ),
 
-
                       ),
 
 
 
+                      child: Text(
 
-                      child:Center(
-
-
-                        child:Text(
+                        filters[index],
 
 
-                          filters[index],
+                        style: TextStyle(
+
+                          color: active
+
+                              ? Colors.white
+
+                              : Colors.black87,
 
 
-
-                          style:TextStyle(
-
-
-                            color:active
-
-                                ? Colors.white
-
-                                : Colors.black87,
+                          fontSize:14,
 
 
-
-                            fontSize:15,
-
-
-
-                            fontWeight:
-                            FontWeight.bold,
-
-
-                          ),
-
+                          fontWeight:
+                          FontWeight.w600,
 
                         ),
 
-
                       ),
 
-
                     ),
-
 
                   );
 
 
-
-                },
-
+                }),
 
               ),
-
 
             ),
 
@@ -339,26 +251,19 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
             // عناوين الجدول
 
-
-
             Container(
-
 
               height:50,
 
 
               color:
-              const Color(0xffeef1f7),
+              const Color(0xffEEF1F7),
 
 
 
+              child: const Row(
 
-              child:const Row(
-
-
-
-                children:[
-
+                children: [
 
 
                   Expanded(
@@ -432,12 +337,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                   ),
 
 
-
                 ],
 
-
               ),
-
 
             ),
 
@@ -445,43 +347,29 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
 
 
-            // لا يوجد بيانات
-
-
-
             Expanded(
-
 
               child:Center(
 
-
                 child:Column(
-
 
                   mainAxisAlignment:
                   MainAxisAlignment.center,
 
 
-
                   children:[
-
 
 
                     Icon(
 
-
                       Icons.people_outline,
 
-
                       size:60,
-
 
                       color:
                       Colors.grey.shade400,
 
-
                     ),
-
 
 
 
@@ -489,40 +377,29 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
 
 
-
                     Text(
-
 
                       "لا يوجد موظفين مسجلين",
 
 
-
                       style:TextStyle(
-
 
                         color:
                         Colors.grey.shade500,
 
 
-
                         fontSize:17,
 
-
                       ),
-
 
                     ),
 
 
-
                   ],
-
 
                 ),
 
-
               ),
-
 
             ),
 
@@ -530,76 +407,422 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
           ],
 
-
         ),
 
 
 
 
 
-        floatingActionButton:
+        // زر +
+
+        floatingActionButton: FloatingActionButton(
 
 
-        FloatingActionButton(
+          onPressed:(){
 
+            showEmployeeActions(context);
 
-
-          onPressed:(){},
-
+          },
 
 
           backgroundColor:
-          const Color(0xff2962c7),
-
-
+          const Color(0xff2962C7),
 
 
           shape:
           const CircleBorder(),
 
 
-
-
           elevation:4,
 
 
-
-
-          child:
-          const Icon(
-
+          child:const Icon(
 
             Icons.add,
 
-
             color:Colors.white,
-
 
             size:32,
 
-
           ),
-
 
 
         ),
 
 
 
-
-
         floatingActionButtonLocation:
-
 
         FloatingActionButtonLocation.endFloat,
 
 
+      ),
+
+    );
+
+  }
+
+
+
+
+
+
+  void showEmployeeActions(BuildContext context){
+
+
+    showModalBottomSheet(
+
+      context: context,
+
+      backgroundColor: Colors.transparent,
+
+      isScrollControlled: true,
+
+
+      builder:(context){
+
+
+        return Directionality(
+
+          textDirection: TextDirection.rtl,
+
+
+          child: Container(
+
+            margin:
+            const EdgeInsets.all(16),
+
+
+            padding:
+            const EdgeInsets.all(24),
+
+
+            decoration: const BoxDecoration(
+
+              color:Colors.white,
+
+              borderRadius: BorderRadius.all(
+
+                Radius.circular(35),
+
+              ),
+
+            ),
+
+
+
+            child: Column(
+
+              mainAxisSize:
+              MainAxisSize.min,
+
+
+              children:[
+
+
+
+                Row(
+
+                  mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
+
+
+                  children:[
+
+
+                    CircleAvatar(
+
+                      backgroundColor:
+                      const Color(0xffF3F5FA),
+
+                      child:IconButton(
+
+                        onPressed:(){
+
+                          Navigator.pop(context);
+
+                        },
+
+
+                        icon:
+                        const Icon(Icons.close),
+
+                      ),
+
+                    ),
+
+
+
+
+                    const Text(
+
+                      "اختر العملية",
+
+                      style:TextStyle(
+
+                        fontSize:26,
+
+                        fontWeight:
+                        FontWeight.bold,
+
+                      ),
+
+                    ),
+
+
+                  ],
+
+                ),
+
+
+
+
+                const SizedBox(height:35),
+
+
+
+
+                actionCard(
+
+                  Icons.person_add_alt_1,
+
+                  "إضافة موظف",
+
+                  "إضافة موظف جديد إلى النظام",
+
+                ),
+
+
+
+
+                const SizedBox(height:20),
+
+
+
+
+                actionCard(
+
+                  Icons.upload_file,
+
+                  "استيراد موظفين",
+
+                  "استيراد موظفين من ملف بيانات",
+
+                ),
+
+
+
+
+                const SizedBox(height:30),
+
+
+
+
+                SizedBox(
+
+                  width:double.infinity,
+
+                  height:60,
+
+
+                  child:ElevatedButton(
+
+                    onPressed:(){
+
+                      Navigator.pop(context);
+
+                    },
+
+
+                    style:ElevatedButton.styleFrom(
+
+                      backgroundColor:
+                      const Color(0xff101828),
+
+                      shape:
+                      RoundedRectangleBorder(
+
+                        borderRadius:
+                        BorderRadius.circular(18),
+
+                      ),
+
+                    ),
+
+
+
+                    child:const Text(
+
+                      "إغلاق",
+
+                      style:TextStyle(
+
+                        color:Colors.white,
+
+                        fontSize:18,
+
+                      ),
+
+                    ),
+
+
+                  ),
+
+                ),
+
+
+              ],
+
+            ),
+
+          ),
+
+        );
+
+      },
+
+    );
+
+  }
+
+
+
+
+
+
+  Widget actionCard(
+
+      IconData icon,
+
+      String title,
+
+      String subtitle,
+
+      ){
+
+    return Container(
+
+      padding:
+      const EdgeInsets.all(18),
+
+
+      decoration:BoxDecoration(
+
+        borderRadius:
+        BorderRadius.circular(22),
+
+
+        border:Border.all(
+
+          color:
+          Colors.grey.shade200,
+
+        ),
 
       ),
 
 
-    );
 
+      child:Row(
+
+        children:[
+
+
+
+          Container(
+
+            width:65,
+
+            height:65,
+
+
+            decoration:BoxDecoration(
+
+              color:
+              const Color(0xffF1F5FF),
+
+              borderRadius:
+              BorderRadius.circular(18),
+
+            ),
+
+
+
+            child:Icon(
+
+              icon,
+
+              color:
+              const Color(0xff2962C7),
+
+              size:32,
+
+            ),
+
+          ),
+
+
+
+
+          const SizedBox(width:20),
+
+
+
+          Column(
+
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
+
+
+            children:[
+
+
+              Text(
+
+                title,
+
+                style:const TextStyle(
+
+                  fontSize:20,
+
+                  fontWeight:
+                  FontWeight.bold,
+
+                ),
+
+              ),
+
+
+
+              const SizedBox(height:6),
+
+
+
+              Text(
+
+                subtitle,
+
+                style:const TextStyle(
+
+                  color:Colors.grey,
+
+                  fontSize:15,
+
+                ),
+
+              ),
+
+
+            ],
+
+          ),
+
+
+        ],
+
+      ),
+
+    );
 
   }
 

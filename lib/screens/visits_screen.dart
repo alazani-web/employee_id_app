@@ -1,31 +1,23 @@
 import 'package:flutter/material.dart';
 
-
 class VisitsScreen extends StatefulWidget {
-
   const VisitsScreen({super.key});
-
 
   @override
   State<VisitsScreen> createState() => _VisitsScreenState();
-
 }
 
 
-
 class _VisitsScreenState extends State<VisitsScreen> {
-
 
   int selectedFilter = 0;
 
 
   final List<String> filters = [
-
     "الكل",
     "نشط",
     "تنتهي قريباً",
     "منتهي",
-
   ];
 
 
@@ -42,7 +34,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
       child: Scaffold(
 
 
-        backgroundColor: const Color(0xfff7f9fc),
+        backgroundColor:
+        const Color(0xffF7F9FC),
 
 
 
@@ -52,13 +45,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
           children: [
 
 
-
-            const SizedBox(height:15),
-
-
-
-
-
             const SizedBox(height:15),
 
 
@@ -66,146 +52,94 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
             // البحث
 
+            Container(
 
-            Padding(
 
-              padding:
+              margin:
               const EdgeInsets.symmetric(horizontal:16),
 
 
-              child: Row(
-
-                children: [
+              height:58,
 
 
-
-                  Expanded(
-
-                    child: Container(
-
-                      height:65,
+              decoration: BoxDecoration(
 
 
-                      decoration:BoxDecoration(
-
-                        color:Colors.white,
+                color:Colors.white,
 
 
-                        borderRadius:
-                        BorderRadius.circular(22),
-
-                      ),
+                borderRadius:
+                BorderRadius.circular(20),
 
 
 
-                      child: TextField(
+                border: Border.all(
+
+                  color:
+                  Colors.grey.shade200,
+
+                ),
 
 
-                        textAlign:TextAlign.right,
-
-
-                        decoration:InputDecoration(
-
-
-                          border:InputBorder.none,
-
-
-                          hintText:
-                          "البحث بالاسم أو رقم الحدود أو التأشيرة...",
-
-
-                          hintStyle:const TextStyle(
-
-                            color:Colors.grey,
-
-                            fontSize:15,
-
-                          ),
+              ),
 
 
 
-                          suffixIcon:
 
-                          const Icon(
-
-                            Icons.search,
-
-                            color:Colors.grey,
-
-                          ),
+              child: TextField(
 
 
-
-                          contentPadding:
-
-                          const EdgeInsets.all(18),
+                textAlign:TextAlign.right,
 
 
-                        ),
+                decoration:InputDecoration(
 
 
-                      ),
+                  border:
+                  InputBorder.none,
 
 
-                    ),
 
+                  hintText:
+
+                  "البحث بالاسم أو رقم الحدود أو التأشيرة...",
+
+
+
+                  hintStyle:const TextStyle(
+
+                    color:Colors.grey,
+
+                    fontSize:16,
 
                   ),
 
 
 
 
-                  const SizedBox(width:12),
+                  suffixIcon:const Icon(
+
+                    Icons.search,
+
+                    color:Colors.grey,
+
+                  ),
 
 
 
 
-                  Container(
+                  contentPadding:
 
-
-                    height:65,
-
-
-                    width:65,
+                  const EdgeInsets.all(18),
 
 
 
-                    decoration:BoxDecoration(
+                ),
 
-                      color:Colors.white,
-
-
-                      borderRadius:
-
-                      BorderRadius.circular(20),
-
-
-                    ),
-
-
-
-                    child:const Icon(
-
-                      Icons.filter_alt_outlined,
-
-
-                      color:Color(0xff7b35d6),
-
-
-                      size:30,
-
-                    ),
-
-
-
-                  )
-
-
-
-                ],
 
 
               ),
+
 
 
             ),
@@ -218,8 +152,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
 
-            // الفلاتر
 
+            // الفلاتر نفس الموظفين
 
             SizedBox(
 
@@ -227,33 +161,20 @@ class _VisitsScreenState extends State<VisitsScreen> {
               height:55,
 
 
-              child:ListView.builder(
+              child:Row(
+
+
+                mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
 
 
 
-                scrollDirection:
-
-                Axis.horizontal,
-
-
-
-                padding:
-
-                const EdgeInsets.symmetric(horizontal:16),
-
-
-
-                itemCount:filters.length,
-
-
-
-                itemBuilder:(context,index){
+                children:List.generate(filters.length,(index){
 
 
 
                   bool active =
                       selectedFilter == index;
-
 
 
 
@@ -277,17 +198,18 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
 
+
                     child:Container(
 
 
-
-                      width:120,
-
+                      width:90,
 
 
-                      margin:
+                      height:42,
 
-                      const EdgeInsets.only(left:10),
+
+                      alignment:
+                      Alignment.center,
 
 
 
@@ -295,26 +217,27 @@ class _VisitsScreenState extends State<VisitsScreen> {
                       decoration:BoxDecoration(
 
 
-
                         color:active
 
-                            ? const Color(0xff2962c7)
+                            ? const Color(0xff2962C7)
 
                             : Colors.white,
 
 
 
-
                         borderRadius:
 
-                        BorderRadius.circular(30),
+                        BorderRadius.circular(25),
 
 
 
 
                         border:Border.all(
 
-                          color:Colors.grey.shade200,
+
+                          color:
+                          Colors.grey.shade200,
+
 
                         ),
 
@@ -325,41 +248,31 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
 
-                      child:Center(
+                      child:Text(
 
 
-
-                        child:Text(
-
-
-
-                          filters[index],
+                        filters[index],
 
 
 
 
-                          style:TextStyle(
+                        style:TextStyle(
+
+
+                          color:active
+
+                              ? Colors.white
+
+                              : Colors.black87,
 
 
 
-                            color:active
-
-                                ? Colors.white
-
-                                : Colors.black87,
+                          fontSize:14,
 
 
 
-
-                            fontWeight:
-
-                            FontWeight.bold,
-
-
-
-                          ),
-
-
+                          fontWeight:
+                          FontWeight.w600,
 
 
                         ),
@@ -378,7 +291,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
 
-                },
+                }),
 
 
 
@@ -391,7 +304,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
 
-            const SizedBox(height:15),
+
+            const SizedBox(height:10),
 
 
 
@@ -407,9 +321,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
               color:
-
-              const Color(0xffeef1f7),
-
+              const Color(0xffEEF1F7),
 
 
 
@@ -418,7 +330,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
                 children:[
-
 
 
 
@@ -434,6 +345,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
                           color:Colors.grey,
 
+                          fontSize:14,
+
                         ),
 
                       ),
@@ -441,7 +354,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
                     ),
 
                   ),
-
 
 
 
@@ -458,6 +370,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
                           color:Colors.grey,
 
+                          fontSize:14,
+
                         ),
 
                       ),
@@ -465,7 +379,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
                     ),
 
                   ),
-
 
 
 
@@ -482,6 +395,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
                           color:Colors.grey,
 
+                          fontSize:14,
+
                         ),
 
                       ),
@@ -489,7 +404,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
                     ),
 
                   ),
-
 
 
 
@@ -507,16 +421,14 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
 
-            Expanded(
 
+            Expanded(
 
 
               child:Center(
 
 
-
                 child:Text(
-
 
 
                   "لا توجد زيارات مسجلة",
@@ -526,10 +438,12 @@ class _VisitsScreenState extends State<VisitsScreen> {
                   style:TextStyle(
 
 
+                    color:
+                    Colors.grey.shade400,
 
-                    color:Colors.grey.shade400,
 
                     fontSize:17,
+
 
                   ),
 
@@ -543,7 +457,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
 
-            )
+            ),
+
 
 
 
@@ -557,12 +472,10 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
 
-        floatingActionButton:
 
+        // زر + نفس الموظفين
 
-
-        FloatingActionButton(
-
+        floatingActionButton:FloatingActionButton(
 
 
           onPressed:(){},
@@ -570,27 +483,28 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
           backgroundColor:
-
-          const Color(0xff2962c7),
+          const Color(0xff2962C7),
 
 
 
 
           shape:
-
           const CircleBorder(),
 
 
+
+          elevation:4,
 
 
 
           child:const Icon(
 
 
-
             Icons.add,
 
+
             color:Colors.white,
+
 
             size:32,
 
@@ -606,17 +520,16 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
 
-        // يسار الشاشة في RTL
-
 
         floatingActionButtonLocation:
+
 
         FloatingActionButtonLocation.endFloat,
 
 
 
-
       ),
+
 
 
     );
