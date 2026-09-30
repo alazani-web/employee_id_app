@@ -3,7 +3,7 @@ import '../screens/alerts_screen.dart';
 
 class AppHeader extends StatelessWidget {
   final int alertCount;
-  final VoidCallback? onMenuTap; // جعلناه اختياري لعدم إجبارك على تمريره
+  final VoidCallback? onMenuTap;
 
   const AppHeader({
     super.key,
@@ -20,12 +20,10 @@ class AppHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // استبدال الزر بـ Builder لفتح القائمة الجانبية فوراً من نفس السياق
           Builder(
             builder: (innerContext) {
               return IconButton(
                 onPressed: () {
-                  // إذا تم تمرير دالة خارجية ينفذها، وإلا يفتح الـ Drawer مباشرة وبسرعة
                   if (onMenuTap != null) {
                     onMenuTap!();
                   } else {
@@ -40,7 +38,6 @@ class AppHeader extends StatelessWidget {
               );
             },
           ),
-
           const Text(
             "نظام إدارة الهويات",
             style: TextStyle(
@@ -49,8 +46,6 @@ class AppHeader extends StatelessWidget {
               color: Color(0xff111827),
             ),
           ),
-
-          // زر التنبيهات
           Stack(
             children: [
               IconButton(

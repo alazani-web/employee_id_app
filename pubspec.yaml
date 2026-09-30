@@ -35,15 +35,25 @@ dev_dependencies:
 
 
 
-
-
 flutter:
 
   uses-material-design: true
 
+
   assets:
+
     - assets/icons/users.svg
+
     - assets/icons/plane.svg
+
     - assets/icons/folder_open.svg
+
     - assets/icons/home.svg
+
     - assets/icons/calendar.svg
+
+    - assets/icons/notifications.svg
+
+    - assets/icons/badge_check.svg
+
+    - assets/icons/database.svg

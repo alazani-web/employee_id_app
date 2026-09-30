@@ -13,268 +13,112 @@ import 'widgets/app_header.dart';
 import 'widgets/bottom_navigation.dart';
 import 'widgets/side_menu.dart';
 
-
-
 class App extends StatefulWidget {
-
   const App({super.key});
-
 
   @override
   State<App> createState() => _AppState();
-
 }
 
-
-
 class _AppState extends State<App> {
-
-
   String currentPage = "home";
-
   int alertCount = 0;
 
-
-
-  Widget getCurrentPage(){
-
-
-    switch(currentPage){
-
-
+  Widget getCurrentPage() {
+    switch (currentPage) {
       case "employees":
         return const EmployeesScreen();
-
-
       case "visits":
         return const VisitsScreen();
-
-
       case "documents":
         return const DocumentsScreen();
-
-
       case "reports":
         return const ReportsScreen();
-
-
       case "alerts":
         return const AlertsScreen();
-
-
       case "settings":
         return const SettingsScreen();
-
-
       case "tasks":
         return const TasksScreen();
-
-
       default:
         return const HomeScreen();
-
     }
-
   }
 
-
-
-
-  void navigate(String page){
-
+  void navigate(String page) {
     setState(() {
-
       currentPage = page;
-
     });
-
   }
 
-
-
-
-  int getCurrentIndex(){
-
-
-    switch(currentPage){
-
-
+  int getCurrentIndex() {
+    switch (currentPage) {
       case "employees":
         return 1;
-
-
       case "visits":
         return 2;
-
-
       case "documents":
         return 3;
-
-
       case "reports":
         return 4;
-
-
       default:
         return 0;
-
     }
-
   }
-
-
-
-
 
   @override
-  Widget build(BuildContext context){
-
-
+  Widget build(BuildContext context) {
     return MaterialApp(
-
-      debugShowCheckedModeBanner:false,
-
-
-      title:"نظام إدارة الهويات",
-
-
-      theme:ThemeData(
-
-        useMaterial3:true,
-
-        fontFamily:"Arial",
-
+      debugShowCheckedModeBanner: false,
+      title: "نظام إدارة الهويات",
+      theme: ThemeData(
+        useMaterial3: true,
+        fontFamily: "Arial",
       ),
-
-
-
-      home:Scaffold(
-
-
-
+      home: Scaffold(
         drawer: SideMenu(
-
-          onNavigate:navigate,
-
+          onNavigate: navigate,
         ),
-
-
-
-
         body: Builder(
-
-          builder:(context){
-
-
+          builder: (context) {
             return Column(
-
-
-              children:[
-
-
-
+              children: [
                 AppHeader(
-
-                  alertCount:alertCount,
-
-
-                  onMenuTap:(){
-
+                  alertCount: alertCount,
+                  onMenuTap: () {
                     Scaffold.of(context).openDrawer();
-
                   },
-
                 ),
-
-
-
-
                 Expanded(
-
-                  child:getCurrentPage(),
-
+                  child: getCurrentPage(),
                 ),
-
-
-
-
                 BottomNavigation(
-
-                  currentIndex:getCurrentIndex(),
-
-
-                  onTap:(index){
-
-
-                    switch(index){
-
-
+                  currentIndex: getCurrentIndex(),
+                  onTap: (index) {
+                    switch (index) {
                       case 0:
-
                         navigate("home");
-
                         break;
-
-
-
                       case 1:
-
                         navigate("employees");
-
                         break;
-
-
-
                       case 2:
-
                         navigate("visits");
-
                         break;
-
-
-
                       case 3:
-
                         navigate("documents");
-
                         break;
-
-
-
                       case 4:
-
                         navigate("reports");
-
                         break;
-
-
                     }
-
-
                   },
-
                 ),
-
-
-
               ],
-
-
             );
-
-
           },
-
         ),
-
-
       ),
-
-
     );
-
-
   }
-
-
 }
