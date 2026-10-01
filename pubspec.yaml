@@ -1,59 +1,43 @@
 name: employee_id_app
-
 description: "A new Flutter project."
-
 publish_to: 'none'
 
 version: 1.0.0+1
 
-
 environment:
   sdk: ^3.9.0
 
-
 dependencies:
-
   flutter:
+    sdk: flutter
+  # حزمة دعم اللغات والتقويم العربي
+  flutter_localizations:
     sdk: flutter
 
   cupertino_icons: ^1.0.8
-
   firebase_core: ^4.15.0
-
   cloud_firestore: ^6.10.0
-
   flutter_svg: ^2.0.10
+  
+  # مكتبة إدارة البيانات
+  provider: ^6.1.2
+  
+  # مكتبة التخزين المحلي
+  shared_preferences: ^2.2.2
 
-
+  # حزم استيراد وإنشاء ملفات Excel واختيار مكان الحفظ
+  file_picker: ^8.0.0
+  excel: ^4.0.0
+  path_provider: ^2.1.0
 
 dev_dependencies:
-
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^5.0.0
 
-
-
 flutter:
-
   uses-material-design: true
 
-
   assets:
-
-    - assets/icons/users.svg
-
-    - assets/icons/plane.svg
-
-    - assets/icons/folder_open.svg
-
-    - assets/icons/home.svg
-
-    - assets/icons/calendar.svg
-
-    - assets/icons/notifications.svg
-
-    - assets/icons/badge_check.svg
-
-    - assets/icons/database.svg
+    - assets/icons/

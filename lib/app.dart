@@ -5,9 +5,7 @@ import 'screens/employees_screen.dart';
 import 'screens/visits_screen.dart';
 import 'screens/documents_screen.dart';
 import 'screens/reports_screen.dart';
-import 'screens/alerts_screen.dart';
 import 'screens/settings_screen.dart';
-import 'screens/tasks_screen.dart';
 
 import 'widgets/app_header.dart';
 import 'widgets/bottom_navigation.dart';
@@ -21,29 +19,55 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
+  // المفتاح الخاص بالـ Scaffold
+  final GlobalKey<ScaffoldState> scaffoldKey =
+      GlobalKey<ScaffoldState>();
+
   String currentPage = "home";
+
   int alertCount = 0;
+
+  // =====================================================
+  // الصفحة الحالية
+  // =====================================================
 
   Widget getCurrentPage() {
     switch (currentPage) {
+      case "home":
+        return const HomeScreen();
+
       case "employees":
         return const EmployeesScreen();
+
       case "visits":
         return const VisitsScreen();
+
       case "documents":
         return const DocumentsScreen();
+
       case "reports":
         return const ReportsScreen();
-      case "alerts":
-        return const AlertsScreen();
+
+      // صفحات الإعدادات
       case "settings":
-        return const SettingsScreen();
+      case "backup":
+      case "activation":
+      case "lock":
+      case "alerts":
       case "tasks":
-        return const TasksScreen();
+      case "about":
+        return SettingsScreen(
+          selectedPage: currentPage,
+        );
+
       default:
         return const HomeScreen();
     }
   }
+
+  // =====================================================
+  // التنقل
+  // =====================================================
 
   void navigate(String page) {
     setState(() {
@@ -51,72 +75,108 @@ class _AppState extends State<App> {
     });
   }
 
+  // =====================================================
+  // الشريط السفلي
+  // =====================================================
+
   int getCurrentIndex() {
     switch (currentPage) {
       case "employees":
         return 1;
+
       case "visits":
         return 2;
+
       case "documents":
         return 3;
+
       case "reports":
         return 4;
+
+      case "home":
       default:
         return 0;
     }
   }
 
+  // =====================================================
+  // بناء التطبيق
+  // =====================================================
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+
       title: "نظام إدارة الهويات",
+
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: "Arial",
       ),
+
       home: Scaffold(
+        key: scaffoldKey,
+
+        // =================================================
+        // تم التغيير إلى drawer لفتح القائمة من اليسار
+        // =================================================
+
         drawer: SideMenu(
           onNavigate: navigate,
         ),
-        body: Builder(
-          builder: (context) {
-            return Column(
-              children: [
-                AppHeader(
-                  alertCount: alertCount,
-                  onMenuTap: () {
-                    Scaffold.of(context).openDrawer();
-                  },
-                ),
-                Expanded(
-                  child: getCurrentPage(),
-                ),
-                BottomNavigation(
-                  currentIndex: getCurrentIndex(),
-                  onTap: (index) {
-                    switch (index) {
-                      case 0:
-                        navigate("home");
-                        break;
-                      case 1:
-                        navigate("employees");
-                        break;
-                      case 2:
-                        navigate("visits");
-                        break;
-                      case 3:
-                        navigate("documents");
-                        break;
-                      case 4:
-                        navigate("reports");
-                        break;
-                    }
-                  },
-                ),
-              ],
-            );
-          },
+
+        // =================================================
+        // محتوى التطبيق
+        // =================================================
+
+        body: Column(
+          children: [
+
+            // الهيدر
+            AppHeader(
+              alertCount: alertCount,
+
+              // تم التغيير إلى openDrawer للفتح من اليسار
+              onMenuTap: () {
+                scaffoldKey.currentState?.openDrawer();
+              },
+            ),
+
+            // الصفحة
+            Expanded(
+              child: getCurrentPage(),
+            ),
+
+            // الشريط السفلي
+            BottomNavigation(
+              currentIndex: getCurrentIndex(),
+
+              onTap: (index) {
+                switch (index) {
+                  case 0:
+                    navigate("home");
+                    break;
+
+                  case 1:
+                    navigate("employees");
+                    break;
+
+                  case 2:
+                    navigate("visits");
+                    break;
+
+                  case 3:
+                    navigate("documents");
+                    break;
+
+                  case 4:
+                    navigate("reports");
+                    break;
+                }
+              },
+            ),
+          ],
         ),
       ),
     );

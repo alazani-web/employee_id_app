@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
+import '../providers/employee_provider.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // جلب عدد الموظفين الحقيقي من المزود
+    final employeeCount = context.watch<EmployeeProvider>().employeeCount;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -98,29 +103,29 @@ class HomeScreen extends StatelessWidget {
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
                 childAspectRatio: 5.0,
-                children: const [
+                children: [
                   StatCard(
                     title: "الموظفين",
-                    count: "27",
+                    count: "$employeeCount", // القيمة الديناميكية الحقيقية
                     icon: "assets/icons/users.svg",
-                    color: Color(0xff2864D7),
-                    background: Color(0xffEFF4FF),
+                    color: const Color(0xff2864D7),
+                    background: const Color(0xffEFF4FF),
                   ),
-                  StatCard(
+                  const StatCard(
                     title: "الوثائق",
                     count: "0",
                     icon: "assets/icons/folder_open.svg",
                     color: Color(0xff2864D7),
                     background: Color(0xffEFF4FF),
                   ),
-                  StatCard(
+                  const StatCard(
                     title: "الزيارات",
                     count: "9",
                     icon: "assets/icons/calendar.svg",
                     color: Color(0xff3D9850),
                     background: Color(0xffEFFAF1),
                   ),
-                  StatCard(
+                  const StatCard(
                     title: "التنبيهات",
                     count: "18",
                     icon: "assets/icons/notifications.svg",
