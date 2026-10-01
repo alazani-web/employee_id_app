@@ -133,8 +133,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
       }
     }).toList();
 
-    // ترتيب الزيارات حسب المدة المتبقية: الأقل أولاً.
-    // الزيارة المنتهية (الأيام السالبة) تظهر قبل الزيارات الأطول مدة.
     result.sort((a, b) {
       final aDays = _daysRemaining(a.expiryDate);
       final bDays = _daysRemaining(b.expiryDate);
@@ -169,7 +167,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
             _buildSearch(),
             const SizedBox(height: 12),
             _buildFilters(),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             _buildListHeader(),
             const SizedBox(height: 1),
             Expanded(
@@ -198,7 +196,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
       ),
     );
   }
-
 
   Widget _buildSearch() {
     return Padding(
@@ -275,66 +272,70 @@ class _VisitsScreenState extends State<VisitsScreen> {
     );
   }
 
-
   Widget _buildListHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-      color: const Color(0xFFF7F8FC),
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Row(
-          children: [
-            Expanded(
-              flex: 1,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: const Text(
-                  'الحالة',
-                  textAlign: TextAlign.left,
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 1,
-              child: Align(
-                alignment: Alignment.center,
-                child: const Text(
-                  'رقم الحدود',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: const Text(
-                  'اسم الزائر',
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ],
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(
+      horizontal: 30,
+      vertical: 12,
+    ),
+    color: const Color(0xFFF7F8FC),
+    child: Row(
+      textDirection: TextDirection.rtl,
+      children: const [
+
+   Expanded(
+  flex: 4,
+  child: Padding(
+    padding: const EdgeInsets.only(right: 70),
+    child: Align(
+      alignment: Alignment.centerRight,
+      child: Text(
+        'اسم الزائر',
+        textAlign: TextAlign.right,
+        style: const TextStyle(
+          color: Color(0xFF6B7280),
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
         ),
       ),
-    );
-  }
+    ),
+  ),
+),
+
+  Expanded(
+  flex: 3,
+  child: Padding(
+    padding: const EdgeInsets.only(right: 35),
+    child: Align(
+      alignment: Alignment.centerRight,
+      child: Text(
+        'رقم الحدود',
+        style: TextStyle(
+          color: Color(0xFF6B7280),
+          fontSize: 13,
+        ),
+      ),
+    ),
+  ),
+),
+        Expanded(
+          flex: 2,
+          child: Align(
+            alignment: Alignment.center,
+            child: Text(
+              'الحالة',
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _emptyState() {
     return Center(
@@ -349,7 +350,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
               borderRadius: BorderRadius.circular(22),
             ),
             child: const Icon(
-              Icons.flight_outlined,
+              Icons.flight_takeoff_outlined,
               color: purple,
               size: 35,
             ),
@@ -376,7 +377,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
     );
   }
 
-
   Widget _buildVisitRow(BuildContext context, Visit visit) {
     final status = _statusLabel(visit.expiryDate);
     final days = _daysRemaining(visit.expiryDate);
@@ -395,100 +395,122 @@ class _VisitsScreenState extends State<VisitsScreen> {
       color: Colors.white,
       child: InkWell(
         onTap: () => _showActions(context, visit),
-        child: Directionality(
-          textDirection: TextDirection.ltr,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 1,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Align(
+                  alignment: Alignment.centerRight,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(15)),
-                          child: Text(status, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w500)),
+                      Text(
+                        visit.visitorName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: dark,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
-                      if (daysText.isNotEmpty) ...[
-                        const SizedBox(height: 5),
-                        Text(daysText, textAlign: TextAlign.left,
-                          style: const TextStyle(color: dark, fontSize: 9.5, fontWeight: FontWeight.w400)),
-                      ],
-                    ],
-                  ),
-                ),
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    children: [
-                      Text(visit.borderNumber.isEmpty ? '-' : visit.borderNumber,
-                        maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                        style: const TextStyle(color: dark, fontSize: 12.5, fontWeight: FontWeight.w400)),
                       const SizedBox(height: 4),
-                      const Text('رقم الحدود',
-                        style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 9, fontWeight: FontWeight.w400)),
+                      Text(
+                        _displayDate(visit.expiryDate),
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Expanded(
-                  flex: 2,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Directionality(
-                      textDirection: TextDirection.rtl,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              visit.visitorName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                color: dark,
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              _displayDate(visit.expiryDate),
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ),
-                        ],
+              ),
+              Expanded(
+                flex: 1,
+                child: Column(
+                  children: [
+                    Text(
+                      visit.borderNumber.isEmpty ? '-' : visit.borderNumber,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: dark,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'رقم الحدود',
+                      style: TextStyle(
+                        color: Color(0xFF9CA3AF),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: statusBg,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: Text(
+                          status,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (daysText.isNotEmpty) ...[
+                      const SizedBox(height: 5),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          daysText,
+                          textAlign: TextAlign.left,
+                          style: const TextStyle(
+                            color: dark,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
-
 
   Future<void> _showOperations(BuildContext context) async {
     await showDialog<void>(
@@ -541,7 +563,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-
                     _operationListCard(
                       title: 'إضافة زيارة',
                       subtitle: 'إضافة زيارة عائلية جديدة',
@@ -554,7 +575,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
                       },
                     ),
                     const SizedBox(height: 8),
-
                     _operationListCard(
                       title: 'استيراد زيارات',
                       subtitle: 'استيراد زيارات من ملف Excel أو CSV',
@@ -566,9 +586,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                         _showImportDialog(context);
                       },
                     ),
-
                     const SizedBox(height: 12),
-
                     SizedBox(
                       width: double.infinity,
                       height: 42,
@@ -709,7 +727,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 15,
-        vertical: 15,
+        vertical: 10,
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -757,7 +775,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
@@ -780,7 +798,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           ...children,
         ],
       ),
@@ -814,17 +832,17 @@ class _VisitsScreenState extends State<VisitsScreen> {
             ),
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: 650,
+                maxWidth: 420,
                 maxHeight: MediaQuery.sizeOf(context).height * .90,
               ),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(22, 16, 22, 18),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                 child: Column(
                   children: [
                     Row(
                       children: [
                         const Icon(
-                          Icons.flight_outlined,
+                          Icons.flight_takeoff_outlined,
                           color: purple,
                           size: 29,
                         ),
@@ -848,7 +866,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                         ),
                       ],
                     ),
-                    const Divider(height: 22),
+                    const Divider(height: 14),
                     _section(
                       title: 'معلومات الزائر',
                       icon: Icons.person_outline,
@@ -859,21 +877,21 @@ class _VisitsScreenState extends State<VisitsScreen> {
                           name,
                           icon: Icons.person_outline,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         _field(
                           'رقم الجواز',
                           passport,
                           icon: Icons.badge_outlined,
                           digitsOnly: true,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         _field(
                           'رقم التأشيرة',
                           visa,
                           icon: Icons.confirmation_number_outlined,
                           digitsOnly: true,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         _field(
                           'رقم الحدود',
                           border,
@@ -1143,7 +1161,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
         icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 19),
         label: Text(
           text,
-          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
@@ -1171,7 +1189,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
               borderRadius: BorderRadius.circular(24),
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
+              constraints: const BoxConstraints(maxWidth: 330),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
                 child: Column(
@@ -1205,7 +1223,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                         fontSize: 12,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
@@ -1253,7 +1271,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
                     SizedBox(
                       width: double.infinity,
                       height: 44,
@@ -1346,11 +1364,11 @@ class _VisitsScreenState extends State<VisitsScreen> {
             surfaceTintColor: Colors.white,
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                maxWidth: 650,
+                maxWidth: 420,
                 maxHeight: MediaQuery.sizeOf(context).height * .90,
               ),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   children: [
                     Row(
@@ -1380,11 +1398,11 @@ class _VisitsScreenState extends State<VisitsScreen> {
                       color: purpleDark,
                       children: [
                         _field('اسم الزائر', name),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         _field('رقم الجواز', passport, digitsOnly: true),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         _field('رقم التأشيرة', visa, digitsOnly: true),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         _field('رقم الحدود', border, digitsOnly: true),
                       ],
                     ),
@@ -1407,7 +1425,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                             if (value != null) expiry.text = value;
                           },
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
                         _field(
                           'تاريخ انتهاء التأمين',
                           insurance,
@@ -1530,210 +1548,210 @@ class _VisitsScreenState extends State<VisitsScreen> {
                   constraints: const BoxConstraints(maxWidth: 430),
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Icon(
-                          Icons.autorenew,
-                          color: primaryBlue,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'تجديد الزيارة',
-                        style: TextStyle(
-                          color: dark,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        visit.visitorName,
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 11.5,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(
-                            color: const Color(0xFFE5E7EB),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: const Icon(
+                            Icons.autorenew,
+                            color: primaryBlue,
+                            size: 24,
                           ),
                         ),
-                        child: Column(
-                          children: [
-                            _renewRow(
-                              'انتهاء الزيارة الحالي',
-                              _displayDate(visit.expiryDate),
-                              const Color(0xFF6B7280),
-                            ),
-                            const SizedBox(height: 10),
-                            _renewRow(
-                              'انتهاء الزيارة الجديد',
-                              _displayDate(newDate),
-                              primaryBlue,
-                            ),
-                            const SizedBox(height: 10),
-                            _renewRow(
-                              'انتهاء التأمين الحالي',
-                              _displayDate(visit.insuranceExpiryDate),
-                              const Color(0xFF6B7280),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          'اختر مدة التجديد',
+                        const SizedBox(height: 12),
+                        const Text(
+                          'تجديد الزيارة',
                           style: TextStyle(
                             color: dark,
-                            fontSize: 12,
+                            fontSize: 17,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 7),
-                      Row(
-                        children: [1, 3].map((m) {
-                          final active = months == m;
-                          return Expanded(
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                left: m == 12 ? 0 : 6,
+                        const SizedBox(height: 5),
+                        Text(
+                          visit.visitorName,
+                          style: const TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 11.5,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(
+                              color: const Color(0xFFE5E7EB),
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              _renewRow(
+                                'انتهاء الزيارة الحالي',
+                                _displayDate(visit.expiryDate),
+                                const Color(0xFF6B7280),
                               ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(13),
-                                onTap: () => setDialogState(() {
-                                  months = m;
-                                }),
-                                child: Container(
-                                  height: 42,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: active
-                                        ? primaryBlue
-                                        : Colors.white,
-                                    borderRadius: BorderRadius.circular(13),
-                                    border: Border.all(
+                              const SizedBox(height: 6),
+                              _renewRow(
+                                'انتهاء الزيارة الجديد',
+                                _displayDate(newDate),
+                                primaryBlue,
+                              ),
+                              const SizedBox(height: 6),
+                              _renewRow(
+                                'انتهاء التأمين الحالي',
+                                _displayDate(visit.insuranceExpiryDate),
+                                const Color(0xFF6B7280),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            'اختر مدة التجديد',
+                            style: TextStyle(
+                              color: dark,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Row(
+                          children: [1, 3].map((m) {
+                            final active = months == m;
+                            return Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  left: m == 3 ? 0 : 6,
+                                ),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(13),
+                                  onTap: () => setDialogState(() {
+                                    months = m;
+                                  }),
+                                  child: Container(
+                                    height: 42,
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
                                       color: active
                                           ? primaryBlue
-                                          : const Color(0xFFE5E7EB),
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(13),
+                                      border: Border.all(
+                                        color: active
+                                            ? primaryBlue
+                                            : const Color(0xFFE5E7EB),
+                                      ),
                                     ),
-                                  ),
-                                  child: Text(
-                                    '$m شهر',
-                                    style: TextStyle(
-                                      color: active ? Colors.white : dark,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
+                                    child: Text(
+                                      '$m شهر',
+                                      style: TextStyle(
+                                        color: active ? Colors.white : dark,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 10),
-                      _field(
-                        'تاريخ انتهاء التأمين الجديد',
-                        insuranceController,
-                        readOnly: true,
-                        icon: Icons.calendar_month_outlined,
-                        onTap: () async {
-                          final value = await _pickDate(
-                            context,
-                            initial: newInsurance,
-                          );
-                          if (value != null) {
-                            newInsurance = value;
-                            insuranceController.text = value;
-                            setDialogState(() {});
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 46,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await context
-                                .read<VisitProvider>()
-                                .renewVisit(
-                                  visit.id,
-                                  newExpiryDate: newDate,
-                                  renewalMonths: months,
-                                  newInsuranceExpiryDate:
-                                      newInsurance.isEmpty
-                                          ? null
-                                          : newInsurance,
-                                );
-                            if (dialogContext.mounted) {
-                              Navigator.pop(dialogContext);
-                            }
-                            if (!context.mounted) return;
-                            _showNotice(
-                              context,
-                              title: 'تم تجديد الزيارة',
-                              message:
-                                  'تم تحديث تاريخ انتهاء الزيارة والتأمين بنجاح.',
-                              type: _NoticeType.success,
                             );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 6),
+                        _field(
+                          'تاريخ انتهاء التأمين الجديد',
+                          insuranceController,
+                          readOnly: true,
+                          icon: Icons.calendar_month_outlined,
+                          onTap: () async {
+                            final value = await _pickDate(
+                              context,
+                              initial: newInsurance,
+                            );
+                            if (value != null) {
+                              newInsurance = value;
+                              insuranceController.text = value;
+                              setDialogState(() {});
+                            }
                           },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryBlue,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 46,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await context
+                                  .read<VisitProvider>()
+                                  .renewVisit(
+                                    visit.id,
+                                    newExpiryDate: newDate,
+                                    renewalMonths: months,
+                                    newInsuranceExpiryDate:
+                                        newInsurance.isEmpty
+                                            ? null
+                                            : newInsurance,
+                                  );
+                              if (dialogContext.mounted) {
+                                Navigator.pop(dialogContext);
+                              }
+                              if (!context.mounted) return;
+                              _showNotice(
+                                context,
+                                title: 'تم تجديد الزيارة',
+                                message:
+                                    'تم تحديث تاريخ انتهاء الزيارة والتأمين بنجاح.',
+                                type: _NoticeType.success,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: primaryBlue,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'تأكيد التجديد',
+                              style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ),
-                          child: const Text(
-                            'تأكيد التجديد',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 42,
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          style: TextButton.styleFrom(
-                            backgroundColor: const Color(0xFF374151),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 42,
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            style: TextButton.styleFrom(
+                              backgroundColor: const Color(0xFF374151),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              'إلغاء',
+                              style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ),
-                          child: const Text(
-                            'إلغاء',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
             );
           },
         );
@@ -1897,7 +1915,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                               },
                             ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 6),
                     SizedBox(
                       width: double.infinity,
                       height: 44,
@@ -1946,7 +1964,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
       type: _NoticeType.success,
     );
   }
-
 
   Future<void> _showImportDialog(BuildContext context) async {
     await showDialog<void>(
@@ -2020,9 +2037,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                               height: 1.55,
                             ),
                           ),
-                          const SizedBox(height: 14),
-
-                          // تحميل القالب
+                          const SizedBox(height: 8),
                           SizedBox(
                             height: 44,
                             child: TextButton.icon(
@@ -2051,10 +2066,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                               ),
                             ),
                           ),
-
-                          const SizedBox(height: 10),
-
-                          // منطقة الرفع
+                          const SizedBox(height: 6),
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.symmetric(
@@ -2076,7 +2088,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                                   color: Color(0xFFA4ACB8),
                                   size: 42,
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 6),
                                 const Text(
                                   'اسحب وأفلت ملف الزيارات هنا',
                                   textAlign: TextAlign.center,
@@ -2130,10 +2142,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                               ],
                             ),
                           ),
-
-                          const SizedBox(height: 14),
-
-                          // متطلبات الملف
+                          const SizedBox(height: 8),
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.fromLTRB(
@@ -2149,34 +2158,72 @@ class _VisitsScreenState extends State<VisitsScreen> {
                                 color: const Color(0xFFEAE2F5),
                               ),
                             ),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'متطلبات ملف الزيارات العائلية:',
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    color: Color(0xFF6F2CA8),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
+                            child: Directionality(
+                              textDirection: TextDirection.rtl,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Text(
+                                      'متطلبات ملف الزيارات العائلية:',
+                                      textAlign: TextAlign.right,
+                                      style: const TextStyle(
+                                        color: Color(0xFF6F2CA8),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                SizedBox(height: 10),
-                                Text(
-                                  '• اسم الزائر، رقم التأشيرة، رقم الحدود، رقم الجواز\n'
-                                  '• تاريخ انتهاء الزيارة وتاريخ انتهاء التأمين',
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    color: Color(0xFF6F2CA8),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w400,
-                                    height: 1.8,
+                                  const SizedBox(height: 10),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Text(
+                                      '• اسم الزائر، رقم التأشيرة، رقم الحدود، رقم الجواز\n'
+                                      '• تاريخ انتهاء الزيارة وتاريخ انتهاء التأمين',
+                                      textAlign: TextAlign.right,
+                                      style: const TextStyle(
+                                        color: Color(0xFF6F2CA8),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w400,
+                                        height: 1.8,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                  const Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: Color(0xFFE7E7EA),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 42,
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        style: TextButton.styleFrom(
+                          backgroundColor: const Color(0xFF0F172A),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                        ),
+                        child: const Text(
+                          'إغلاق',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -2717,5 +2764,4 @@ class _VisitsScreenState extends State<VisitsScreen> {
       if (entry.mounted) entry.remove();
     });
   }
-
 }

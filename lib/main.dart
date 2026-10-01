@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'providers/employee_provider.dart';
 import 'providers/visit_provider.dart';
+import 'providers/alert_provider.dart';
 import 'app.dart';
 
 Future<void> main() async {
@@ -23,6 +24,14 @@ Future<void> main() async {
         ),
         ChangeNotifierProvider<VisitProvider>(
           create: (_) => VisitProvider(),
+        ),
+        ChangeNotifierProxyProvider2<EmployeeProvider, VisitProvider, AlertProvider>(
+          create: (context) => AlertProvider(
+            Provider.of<EmployeeProvider>(context, listen: false),
+            Provider.of<VisitProvider>(context, listen: false),
+          ),
+          update: (context, employeeProvider, visitProvider, previousAlerts) =>
+              previousAlerts ?? AlertProvider(employeeProvider, visitProvider),
         ),
       ],
       child: const MainApp(),

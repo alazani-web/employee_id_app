@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../providers/employee_provider.dart';
+import '../providers/visit_provider.dart';
+import '../providers/alert_provider.dart'; // استيراد مزود التنبيهات
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -10,6 +12,12 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // جلب عدد الموظفين الحقيقي من المزود
     final employeeCount = context.watch<EmployeeProvider>().employeeCount;
+    
+    // جلب عدد الزيارات الحقيقي ديناميكياً من الـ VisitProvider
+    final visitCount = context.watch<VisitProvider>().visitCount;
+
+    // جلب عدد التنبيهات ديناميكياً من الـ AlertProvider
+    final alertCount = context.watch<AlertProvider>().alertCount;
 
     return Directionality(
       textDirection: TextDirection.rtl,
@@ -106,7 +114,7 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   StatCard(
                     title: "الموظفين",
-                    count: "$employeeCount", // القيمة الديناميكية الحقيقية
+                    count: "$employeeCount",
                     icon: "assets/icons/users.svg",
                     color: const Color(0xff2864D7),
                     background: const Color(0xffEFF4FF),
@@ -118,19 +126,19 @@ class HomeScreen extends StatelessWidget {
                     color: Color(0xff2864D7),
                     background: Color(0xffEFF4FF),
                   ),
-                  const StatCard(
+                  StatCard(
                     title: "الزيارات",
-                    count: "9",
+                    count: "$visitCount",
                     icon: "assets/icons/calendar.svg",
-                    color: Color(0xff3D9850),
-                    background: Color(0xffEFFAF1),
+                    color: const Color(0xff3D9850),
+                    background: const Color(0xffEFFAF1),
                   ),
-                  const StatCard(
+                  StatCard(
                     title: "التنبيهات",
-                    count: "18",
+                    count: "$alertCount", // عرض عداد التنبيهات الديناميكي هنا
                     icon: "assets/icons/notifications.svg",
-                    color: Color(0xffD8792B),
-                    background: Color(0xfffff5ed),
+                    color: const Color(0xffD8792B),
+                    background: const Color(0xfffff5ed),
                   ),
                 ],
               ),
@@ -188,7 +196,6 @@ class StatCard extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // الأسماء والأرقام في اليمين بخط Bold واضح
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,8 +218,6 @@ class StatCard extends StatelessWidget {
               ),
             ],
           ),
-
-          // الأيقونة داخل دائرة بيضاء في اليسار
           Container(
             padding: const EdgeInsets.all(6),
             decoration: const BoxDecoration(
