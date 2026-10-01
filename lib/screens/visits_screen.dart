@@ -109,7 +109,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
   List<Visit> _filteredVisits(List<Visit> visits) {
     final query = searchController.text.trim().toLowerCase();
 
-    return visits.where((visit) {
+    final result = visits.where((visit) {
       final matchesSearch =
           query.isEmpty ||
           visit.visitorName.toLowerCase().contains(query) ||
@@ -132,6 +132,26 @@ class _VisitsScreenState extends State<VisitsScreen> {
           return true;
       }
     }).toList();
+
+    // ترتيب الزيارات حسب المدة المتبقية: الأقل أولاً.
+    // الزيارة المنتهية (الأيام السالبة) تظهر قبل الزيارات الأطول مدة.
+    result.sort((a, b) {
+      final aDays = _daysRemaining(a.expiryDate);
+      final bDays = _daysRemaining(b.expiryDate);
+
+      if (aDays == null && bDays == null) {
+        return a.visitorName.compareTo(b.visitorName);
+      }
+      if (aDays == null) return 1;
+      if (bDays == null) return -1;
+
+      final byDays = aDays.compareTo(bDays);
+      if (byDays != 0) return byDays;
+
+      return a.visitorName.compareTo(b.visitorName);
+    });
+
+    return result;
   }
 
   @override
@@ -259,7 +279,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
   Widget _buildListHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
       color: const Color(0xFFF7F8FC),
       child: Directionality(
         textDirection: TextDirection.ltr,
@@ -323,7 +343,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
         children: [
           Container(
             width: 72,
-            height: 72,
+            height: 68,
             decoration: BoxDecoration(
               color: const Color(0xFFF3E8FF),
               borderRadius: BorderRadius.circular(22),
@@ -379,7 +399,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
           textDirection: TextDirection.ltr,
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 13),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
             ),
@@ -489,7 +509,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
               borderRadius: BorderRadius.circular(22),
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 360),
+              constraints: const BoxConstraints(maxWidth: 350),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 child: Column(
@@ -513,8 +533,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
                             textAlign: TextAlign.right,
                             style: TextStyle(
                               color: dark,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),
@@ -969,27 +989,92 @@ class _VisitsScreenState extends State<VisitsScreen> {
                               }
 
                               final provider = context.read<VisitProvider>();
-                              final duplicate = provider.visits.any(
-                                (v) =>
-                                    (passportNumber.isNotEmpty &&
-                                        v.passportNumber.trim() == passportNumber) ||
-                                    (visaNumber.isNotEmpty &&
-                                        v.visaNumber.trim() == visaNumber) ||
-                                    (borderNumber.isNotEmpty &&
-                                        v.borderNumber.trim() == borderNumber),
-                              );
+
+                              String normalizeIdentifier(String value) {
+                                var result = value.trim();
+                                const arabic = '٠١٢٣٤٥٦٧٨٩';
+                                const western = '0123456789';
+                                for (int i = 0; i < arabic.length; i++) {
+                                  result = result.replaceAll(arabic[i], western[i]);
+                                }
+                                return result.replaceAll(RegExp(r'[\s\-_/+,]+'), '');
+                              }
+
+                              String normalizeName(String value) {
+                                return value
+                                    .trim()
+                                    .toLowerCase()
+                                    .replaceAll(RegExp(r'\s+'), '')
+                                    .replaceAll('أ', 'ا')
+                                    .replaceAll('إ', 'ا')
+                                    .replaceAll('آ', 'ا')
+                                    .replaceAll('ة', 'ه');
+                              }
+
+                              final passportKey = normalizeIdentifier(passportNumber);
+                              final visaKey = normalizeIdentifier(visaNumber);
+                              final borderKey = normalizeIdentifier(borderNumber);
+                              final nameKey = normalizeName(visitorName);
+
+                              final duplicate = provider.visits.any((v) {
+                                final samePassport = passportKey.isNotEmpty &&
+                                    passportKey == normalizeIdentifier(v.passportNumber);
+                                final sameVisa = visaKey.isNotEmpty &&
+                                    visaKey == normalizeIdentifier(v.visaNumber);
+                                final sameBorder = borderKey.isNotEmpty &&
+                                    borderKey == normalizeIdentifier(v.borderNumber);
+
+                                final existingName = normalizeName(v.visitorName);
+                                final noIdentifiersEntered =
+                                    passportKey.isEmpty &&
+                                    visaKey.isEmpty &&
+                                    borderKey.isEmpty;
+                                final noExistingIdentifiers =
+                                    normalizeIdentifier(v.passportNumber).isEmpty &&
+                                    normalizeIdentifier(v.visaNumber).isEmpty &&
+                                    normalizeIdentifier(v.borderNumber).isEmpty;
+
+                                return samePassport ||
+                                    sameVisa ||
+                                    sameBorder ||
+                                    (noIdentifiersEntered &&
+                                        noExistingIdentifiers &&
+                                        nameKey.isNotEmpty &&
+                                        nameKey == existingName);
+                              });
 
                               if (duplicate) {
-                                if (dialogContext.mounted) {
-                                  Navigator.pop(dialogContext);
-                                }
                                 if (!context.mounted) return;
-                                _showNotice(
-                                  context,
-                                  title: 'تم تجاهل إضافة الزيارة',
-                                  message:
-                                      'الزيارة مسجلة مسبقًا بنفس رقم الجواز أو رقم التأشيرة أو رقم الحدود.',
-                                  type: _NoticeType.warning,
+                                await showDialog<void>(
+                                  context: context,
+                                  builder: (noticeContext) => Directionality(
+                                    textDirection: TextDirection.rtl,
+                                    child: AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(18),
+                                      ),
+                                      title: const Text(
+                                        'الزيارة مكررة',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      content: const Text(
+                                        'هذا الشخص مسجل مسبقًا في قائمة الزيارات.',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF6B7280),
+                                        ),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(noticeContext),
+                                          child: const Text('حسنًا'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 );
                                 return;
                               }
@@ -1433,16 +1518,18 @@ class _VisitsScreenState extends State<VisitsScreen> {
               textDirection: TextDirection.rtl,
               child: Dialog(
                 insetPadding: const EdgeInsets.symmetric(
-                  horizontal: 72,
-                  vertical: 18,
+                  horizontal: 16,
+                  vertical: 16,
                 ),
                 backgroundColor: Colors.white,
                 surfaceTintColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                   child: Column(
                     children: [
                       Container(
@@ -1646,6 +1733,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                   ),
                 ),
               ),
+            ),
             );
           },
         );
