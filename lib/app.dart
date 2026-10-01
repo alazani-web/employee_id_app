@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'screens/home_screen.dart';
 import 'screens/employees_screen.dart';
 import 'screens/visits_screen.dart';
@@ -105,17 +104,7 @@ class _AppState extends State<App> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-
-      title: "نظام إدارة الهويات",
-
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: "Arial",
-      ),
-
-      home: Scaffold(
+    return Scaffold(
         key: scaffoldKey,
 
         // =================================================
@@ -178,7 +167,6 @@ class _AppState extends State<App> {
             ),
           ],
         ),
-      ),
     );
   }
 }

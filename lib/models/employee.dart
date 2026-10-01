@@ -6,13 +6,13 @@ class Employee {
   final String jobTitle;
   final String phoneNumber;
   final String status; // سارية، تحتاج متابعة، منتهية
-  final List<String> logs; // سجل العمليات (تجديد، تعديل، إلخ)
+  final List<String> logs;
 
   Employee({
     required this.id,
     required this.name,
     required this.idNumber,
-    required this.expiryDate,
+    this.expiryDate = "",
     this.jobTitle = "موظف",
     this.phoneNumber = "",
     this.status = "سارية",

@@ -18,10 +18,10 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
+        ChangeNotifierProvider<EmployeeProvider>(
           create: (_) => EmployeeProvider(),
         ),
-        ChangeNotifierProvider(
+        ChangeNotifierProvider<VisitProvider>(
           create: (_) => VisitProvider(),
         ),
       ],
@@ -39,16 +39,18 @@ class MainApp extends StatelessWidget {
       title: 'نظام إدارة الهويات',
       debugShowCheckedModeBanner: false,
 
-      // إعدادات دعم اللغة العربية واتجاه النص (RTL) للتقويم والواجهات
+      // دعم اللغة العربية و Material Localization
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+
       supportedLocales: const [
         Locale('ar', 'SA'),
         Locale('en', 'US'),
       ],
+
       locale: const Locale('ar', 'SA'),
 
       theme: ThemeData(
@@ -60,6 +62,7 @@ class MainApp extends StatelessWidget {
         ),
       ),
 
+      // App موجود في lib/app.dart ويدعم const
       home: const App(),
     );
   }

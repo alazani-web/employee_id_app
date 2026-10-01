@@ -9,8 +9,33 @@ class VisitProvider extends ChangeNotifier {
   final List<Visit> _visits = [];
   late final Future<void> _initialization;
 
+  String _normalizeIdentifier(String value) {
+    var result = value.trim();
+
+    const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+    const westernDigits = '0123456789';
+    for (int i = 0; i < arabicDigits.length; i++) {
+      result = result.replaceAll(arabicDigits[i], westernDigits[i]);
+    }
+
+    result = result.replaceAll(RegExp(r'(?<=\d)\.0+$'), '');
+    result = result.replaceAll(RegExp(r'[\s\-_/+,]+'), '');
+    return result;
+  }
+
   VisitProvider() {
     _initialization = _loadVisits();
+  }
+
+  String _normalizeName(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ة', 'ه')
+        .replaceAll(RegExp(r'\\s+'), '');
   }
 
   List<Visit> get visits => List.unmodifiable(_visits);
@@ -19,16 +44,44 @@ class VisitProvider extends ChangeNotifier {
   Future<void> addVisit(Visit visit) async {
     await _initialization;
 
-    final visa = visit.visaNumber.trim();
-    final border = visit.borderNumber.trim();
+    final passport = _normalizeIdentifier(visit.passportNumber);
+    final visa = _normalizeIdentifier(visit.visaNumber);
+    final border = _normalizeIdentifier(visit.borderNumber);
 
-    if ((visa.isNotEmpty && _visits.any((v) => v.visaNumber.trim() == visa)) ||
-        (border.isNotEmpty &&
-            _visits.any((v) => v.borderNumber.trim() == border))) {
+    final name = _normalizeName(visit.visitorName);
+    final duplicate = _visits.any((existing) {
+      final existingName = _normalizeName(existing.visitorName);
+      final existingPassport = _normalizeIdentifier(existing.passportNumber);
+      final existingVisa = _normalizeIdentifier(existing.visaNumber);
+      final existingBorder = _normalizeIdentifier(existing.borderNumber);
+
+      final sameNameAndIdentifier =
+          name.isNotEmpty &&
+          name == existingName &&
+          (
+            (passport.isNotEmpty && passport == existingPassport) ||
+            (visa.isNotEmpty && visa == existingVisa) ||
+            (border.isNotEmpty && border == existingBorder)
+          );
+
+      final allExistingIdentifiersMatch =
+          passport.isNotEmpty &&
+          visa.isNotEmpty &&
+          border.isNotEmpty &&
+          passport == existingPassport &&
+          visa == existingVisa &&
+          border == existingBorder;
+
+      return sameNameAndIdentifier || allExistingIdentifiersMatch;
+    });
+
+    if (duplicate) {
       return;
     }
 
-    visit.logs.add('تمت إضافة الزيارة بتاريخ ${_today()}');
+    visit.logs.add(
+      'تمت إضافة الزيارة بتاريخ ${_todayWithTime()}',
+    );
     _visits.add(visit);
     notifyListeners();
     await _saveVisits();
@@ -38,33 +91,67 @@ class VisitProvider extends ChangeNotifier {
     await _initialization;
     if (newVisits.isEmpty) return 0;
 
+    final passports = _visits
+        .map((v) => _normalizeIdentifier(v.passportNumber))
+        .where((v) => v.isNotEmpty)
+        .toSet();
+
     final visas = _visits
-        .map((v) => v.visaNumber.trim())
+        .map((v) => _normalizeIdentifier(v.visaNumber))
         .where((v) => v.isNotEmpty)
         .toSet();
 
     final borders = _visits
-        .map((v) => v.borderNumber.trim())
+        .map((v) => _normalizeIdentifier(v.borderNumber))
         .where((v) => v.isNotEmpty)
         .toSet();
 
     int added = 0;
 
     for (final visit in newVisits) {
-      final visa = visit.visaNumber.trim();
-      final border = visit.borderNumber.trim();
+      final name = _normalizeName(visit.visitorName);
+      final passport = _normalizeIdentifier(visit.passportNumber);
+      final visa = _normalizeIdentifier(visit.visaNumber);
+      final border = _normalizeIdentifier(visit.borderNumber);
 
-      if ((visa.isNotEmpty && visas.contains(visa)) ||
-          (border.isNotEmpty && borders.contains(border))) {
+      // لا نعتبر الزيارة مكررة لمجرد تطابق رقم واحد مع شخص آخر.
+      // التكرار الحقيقي يكون عندما يكون الاسم نفسه ومعه معرف متطابق،
+      // أو عندما تتطابق جميع المعرفات الموجودة في السجلين.
+      final duplicate = _visits.any((existing) {
+        final existingName = _normalizeName(existing.visitorName);
+        final existingPassport = _normalizeIdentifier(existing.passportNumber);
+        final existingVisa = _normalizeIdentifier(existing.visaNumber);
+        final existingBorder = _normalizeIdentifier(existing.borderNumber);
+
+        final sameNameAndIdentifier =
+            name.isNotEmpty &&
+            name == existingName &&
+            (
+              (passport.isNotEmpty && passport == existingPassport) ||
+              (visa.isNotEmpty && visa == existingVisa) ||
+              (border.isNotEmpty && border == existingBorder)
+            );
+
+        final allExistingIdentifiersMatch =
+            passport.isNotEmpty &&
+            visa.isNotEmpty &&
+            border.isNotEmpty &&
+            passport == existingPassport &&
+            visa == existingVisa &&
+            border == existingBorder;
+
+        return sameNameAndIdentifier || allExistingIdentifiersMatch;
+      });
+
+      if (duplicate) {
         continue;
       }
 
-      visit.logs.add('تمت إضافة الزيارة بتاريخ ${_today()}');
+      visit.logs.add(
+        'تمت إضافة الزيارة عبر الاستيراد بتاريخ ${_todayWithTime()}',
+      );
       _visits.add(visit);
       added++;
-
-      if (visa.isNotEmpty) visas.add(visa);
-      if (border.isNotEmpty) borders.add(border);
     }
 
     if (added > 0) {
@@ -81,7 +168,9 @@ class VisitProvider extends ChangeNotifier {
     final index = _visits.indexWhere((v) => v.id == updatedVisit.id);
     if (index == -1) return;
 
-    updatedVisit.logs.add('تم تعديل بيانات الزيارة بتاريخ ${_today()}');
+    updatedVisit.logs.add(
+      'تم تعديل بيانات الزيارة بتاريخ ${_todayWithTime()}',
+    );
     _visits[index] = updatedVisit;
     notifyListeners();
     await _saveVisits();
@@ -92,6 +181,7 @@ class VisitProvider extends ChangeNotifier {
     required String newExpiryDate,
     String? newInsuranceExpiryDate,
     String? notes,
+    int? renewalMonths,
   }) async {
     await _initialization;
 
@@ -99,9 +189,19 @@ class VisitProvider extends ChangeNotifier {
     if (index == -1) return;
 
     final old = _visits[index];
+    final oldExpiry = old.expiryDate;
+    final durationText = renewalMonths == null
+        ? 'غير محددة'
+        : renewalMonths == 1
+            ? 'شهر واحد'
+            : '$renewalMonths أشهر';
 
     old.logs.add(
-      'تم تجديد الزيارة حتى $newExpiryDate بتاريخ ${_today()}',
+      'تم تجديد الزيارة بتاريخ ${_todayWithTime()}\n'
+      'مدة التجديد: $durationText\n'
+      'من تاريخ: $oldExpiry\n'
+      'إلى تاريخ: $newExpiryDate'
+      '${newInsuranceExpiryDate != null && newInsuranceExpiryDate.isNotEmpty ? '\nانتهاء التأمين الجديد: $newInsuranceExpiryDate' : ''}',
     );
 
     _visits[index] = old.copyWith(
@@ -137,11 +237,9 @@ class VisitProvider extends ChangeNotifier {
 
   Future<void> _saveVisits() async {
     final prefs = await SharedPreferences.getInstance();
-
     final encoded = _visits
         .map((visit) => jsonEncode(visit.toJson()))
         .toList();
-
     await prefs.setStringList(_storageKey, encoded);
   }
 
@@ -156,7 +254,6 @@ class VisitProvider extends ChangeNotifier {
         for (final item in saved) {
           try {
             final decoded = jsonDecode(item);
-
             if (decoded is Map<String, dynamic>) {
               _visits.add(Visit.fromJson(decoded));
             } else if (decoded is Map) {
@@ -178,8 +275,12 @@ class VisitProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _today() {
+  String _todayWithTime() {
     final now = DateTime.now();
-    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return '${now.day.toString().padLeft(2, '0')}/'
+        '${now.month.toString().padLeft(2, '0')}/'
+        '${now.year} - '
+        '${now.hour.toString().padLeft(2, '0')}:'
+        '${now.minute.toString().padLeft(2, '0')}';
   }
 }

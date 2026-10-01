@@ -3,6 +3,7 @@ import 'dart:convert';
 class Visit {
   final String id;
   String visitorName;
+  String passportNumber;
   String visaNumber;
   String borderNumber;
   String expiryDate;
@@ -14,6 +15,7 @@ class Visit {
   Visit({
     required this.id,
     required this.visitorName,
+    this.passportNumber = '',
     this.visaNumber = '',
     this.borderNumber = '',
     required this.expiryDate,
@@ -26,6 +28,7 @@ class Visit {
   Visit copyWith({
     String? id,
     String? visitorName,
+    String? passportNumber,
     String? visaNumber,
     String? borderNumber,
     String? expiryDate,
@@ -37,6 +40,7 @@ class Visit {
     return Visit(
       id: id ?? this.id,
       visitorName: visitorName ?? this.visitorName,
+      passportNumber: passportNumber ?? this.passportNumber,
       visaNumber: visaNumber ?? this.visaNumber,
       borderNumber: borderNumber ?? this.borderNumber,
       expiryDate: expiryDate ?? this.expiryDate,
@@ -51,6 +55,7 @@ class Visit {
     return {
       'id': id,
       'visitorName': visitorName,
+      'passportNumber': passportNumber,
       'visaNumber': visaNumber,
       'borderNumber': borderNumber,
       'expiryDate': expiryDate,
@@ -65,6 +70,7 @@ class Visit {
     return Visit(
       id: (json['id'] ?? '').toString(),
       visitorName: (json['visitorName'] ?? json['name'] ?? '').toString(),
+      passportNumber: (json['passportNumber'] ?? json['passport'] ?? '').toString(),
       visaNumber: (json['visaNumber'] ?? '').toString(),
       borderNumber: (json['borderNumber'] ?? '').toString(),
       expiryDate: (json['expiryDate'] ?? '').toString(),
