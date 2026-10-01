@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'providers/employee_provider.dart';
+import 'providers/visit_provider.dart';
 import 'app.dart';
 
 Future<void> main() async {
@@ -17,7 +18,12 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => EmployeeProvider()),
+        ChangeNotifierProvider(
+          create: (_) => EmployeeProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => VisitProvider(),
+        ),
       ],
       child: const MainApp(),
     ),
@@ -45,9 +51,8 @@ class MainApp extends StatelessWidget {
       ],
       locale: const Locale('ar', 'SA'),
 
-      // ثيم موحد يدعم ألوان وشكل منتقي التاريخ المخصص
       theme: ThemeData(
-        fontFamily: 'Cairo', // أو الخط المعتمد في مشروعك
+        fontFamily: 'Cairo',
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1D4ED8),
