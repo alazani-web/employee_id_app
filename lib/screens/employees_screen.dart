@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +6,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' as excel_lib;
 import '../providers/employee_provider.dart';
 import '../models/employee.dart';
+
+enum _AppNotificationType {
+  success,
+  warning,
+  error,
+}
 
 class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key});
@@ -376,14 +382,16 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         fileName: 'قالب_استيراد_الموظفين.xlsx',
         type: FileType.custom,
         allowedExtensions: ['xlsx'],
+        bytes: Uint8List.fromList(fileBytes),
       );
 
       if (outputFile != null) {
-        File file = File(outputFile);
-        await file.writeAsBytes(fileBytes);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم تحميل القالب بنجاح!'), backgroundColor: Colors.green),
+          _showAppNotification(
+            context,
+            title: 'تم تجهيز قالب الموظفين',
+            message: 'تم حفظ قالب استيراد الموظفين بنجاح.',
+            type: _AppNotificationType.success,
           );
         }
       }
@@ -397,126 +405,418 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 
   // دعم استيراد الملفات على الويب والمنصات الأخرى باستخدام withData: true و file.bytes
-  Future<void> _pickAndImportExcelFile(BuildContext context) async {
+  // قراءة سطر CSV مع دعم القيم المحاطة بعلامات اقتباس والفواصل داخل النص.
+  List<String> _parseCsvLine(String line) {
+    final columns = <String>[];
+    final buffer = StringBuffer();
+    bool insideQuotes = false;
+
+    for (int i = 0; i < line.length; i++) {
+      final char = line[i];
+
+      if (char == '"') {
+        if (insideQuotes && i + 1 < line.length && line[i + 1] == '"') {
+          buffer.write('"');
+          i++;
+        } else {
+          insideQuotes = !insideQuotes;
+        }
+      } else if (char == ',' && !insideQuotes) {
+        columns.add(buffer.toString());
+        buffer.clear();
+      } else {
+        buffer.write(char);
+      }
+    }
+
+    columns.add(buffer.toString());
+
+    return columns;
+  }
+
+  Future<void> _pickAndImportExcelFile(
+    BuildContext context, {
+    BuildContext? dialogContext,
+  }) async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['xlsx', 'csv'],
         withData: true,
       );
 
-      if (result != null && result.files.isNotEmpty) {
-        var file = result.files.first;
-        var bytes = file.bytes;
+      if (result == null || result.files.isEmpty) {
+        return;
+      }
 
-        if (bytes == null && file.path != null) {
-          bytes = File(file.path!).readAsBytesSync();
+      final pickedFile = result.files.first;
+      final bytes = pickedFile.bytes;
+
+      if (bytes == null || bytes.isEmpty) {
+        if (context.mounted) {
+          _showAppNotification(
+            context,
+            title: 'تعذر قراءة الملف',
+            message: 'تأكد من اختيار ملف Excel أو CSV صالح.',
+            type: _AppNotificationType.error,
+          );
         }
+        return;
+      }
 
-        if (bytes == null) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('تعذر قراءة بيانات الملف'), backgroundColor: Colors.red),
-            );
-          }
-          return;
-        }
+      // إغلاق نافذة الاستيراد نفسها فور اختيار الملف.
+      // لا نغلق صفحة الموظفين.
+      final importDialogContext = dialogContext;
+      if (importDialogContext != null &&
+          importDialogContext.mounted) {
+        Navigator.of(importDialogContext).pop();
+      }
 
-        var excel = excel_lib.Excel.decodeBytes(bytes);
+      await Future<void>.delayed(Duration.zero);
 
-        int importedCount = 0;
-        int skippedCount = 0;
+      final provider = Provider.of<EmployeeProvider>(
+        context,
+        listen: false,
+      );
 
-        if (!context.mounted) return;
-        final provider = Provider.of<EmployeeProvider>(context, listen: false);
+      final fileName = pickedFile.name.toLowerCase();
+      final List<Employee> importedEmployees = [];
 
-        final existingIdNumbers = provider.employees
-            .map((e) => e.idNumber.trim())
-            .where((id) => id.isNotEmpty)
-            .toSet();
+      if (fileName.endsWith('.xlsx')) {
+        final workbook = excel_lib.Excel.decodeBytes(bytes);
 
-        for (var table in excel.tables.keys) {
-          var sheet = excel.tables[table];
+        for (final sheetName in workbook.tables.keys) {
+          final sheet = workbook.tables[sheetName];
           if (sheet == null) continue;
 
-          for (int i = 1; i < sheet.maxRows; i++) {
-            var row = sheet.rows[i];
+          for (int rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
+            final row = sheet.rows[rowIndex];
             if (row.isEmpty) continue;
 
             String getCellValue(int index) {
-              if (index >= row.length || row[index] == null || row[index]?.value == null) {
-                return '';
+              if (index >= row.length) return '';
+
+              final cell = row[index];
+              if (cell == null || cell.value == null) return '';
+
+              final value = cell.value;
+
+              if (value is excel_lib.TextCellValue) {
+                return (value.value.text ?? '').trim();
               }
-              var cellValue = row[index]!.value;
-              if (cellValue is excel_lib.TextCellValue) {
-                return cellValue.value.text ?? '';
-              } else if (cellValue is excel_lib.IntCellValue) {
-                return cellValue.value.toString();
-              } else if (cellValue is excel_lib.DoubleCellValue) {
-                return cellValue.value.toString();
-              } else if (cellValue is excel_lib.DateCellValue) {
-                return "${cellValue.year}-${cellValue.month.toString().padLeft(2, '0')}-${cellValue.day.toString().padLeft(2, '0')}";
+
+              if (value is excel_lib.IntCellValue) {
+                return value.value.toString().trim();
               }
-              return cellValue.toString().trim();
+
+              if (value is excel_lib.DoubleCellValue) {
+                final number = value.value;
+                if (number == number.roundToDouble()) {
+                  return number.toInt().toString();
+                }
+                return number.toString().trim();
+              }
+
+              if (value is excel_lib.DateCellValue) {
+                return '${value.year}-'
+                    '${value.month.toString().padLeft(2, '0')}-'
+                    '${value.day.toString().padLeft(2, '0')}';
+              }
+
+              return value.toString().trim();
             }
 
-            String name = getCellValue(0);
-            String idNumber = getCellValue(1);
-            String expiryDate = getCellValue(2);
+            final name = getCellValue(0);
+            final idNumber = getCellValue(1);
+            var expiryDate = getCellValue(2);
+
+            if (name.isEmpty) continue;
 
             if (expiryDate.isEmpty) {
-              expiryDate = "2026-12-31";
+              expiryDate = '2026-12-31';
             }
 
-            if (name.isNotEmpty) {
-              if (idNumber.isNotEmpty && existingIdNumbers.contains(idNumber)) {
-                skippedCount++;
-                continue;
-              }
-
-              final newEmp = Employee(
-                id: DateTime.now().millisecondsSinceEpoch.toString() + importedCount.toString(),
+            importedEmployees.add(
+              Employee(
+                id: '${DateTime.now().microsecondsSinceEpoch}_$rowIndex',
                 name: name,
                 idNumber: idNumber,
                 expiryDate: expiryDate,
-                status: "سارية",
-              );
-
-              provider.addEmployee(newEmp);
-
-              if (idNumber.isNotEmpty) {
-                existingIdNumbers.add(idNumber);
-              }
-              importedCount++;
-            }
+                status: 'سارية',
+              ),
+            );
           }
         }
+      } else if (fileName.endsWith('.csv')) {
+        final csvText = utf8.decode(
+          bytes,
+          allowMalformed: true,
+        );
 
-        if (context.mounted) {
-          Navigator.pop(context);
+        final lines = csvText
+            .split(RegExp(r'\r?\n'))
+            .where((line) => line.trim().isNotEmpty)
+            .toList();
 
-          String message = 'تم استيراد $importedCount موظف بنجاح!';
-          if (skippedCount > 0) {
-            message += ' (تم تجاهل $skippedCount موظف مكرر)';
+        for (int rowIndex = 1; rowIndex < lines.length; rowIndex++) {
+          final columns = _parseCsvLine(lines[rowIndex]);
+          if (columns.isEmpty) continue;
+
+          final name = columns.isNotEmpty
+              ? columns[0].trim()
+              : '';
+
+          final idNumber = columns.length > 1
+              ? columns[1].trim()
+              : '';
+
+          var expiryDate = columns.length > 2
+              ? columns[2].trim()
+              : '';
+
+          if (name.isEmpty) continue;
+
+          if (expiryDate.isEmpty) {
+            expiryDate = '2026-12-31';
           }
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(message),
-              backgroundColor: importedCount > 0 ? Colors.green : Colors.orange,
-              duration: const Duration(seconds: 4),
+          importedEmployees.add(
+            Employee(
+              id: '${DateTime.now().microsecondsSinceEpoch}_$rowIndex',
+              name: name,
+              idNumber: idNumber,
+              expiryDate: expiryDate,
+              status: 'سارية',
             ),
           );
         }
+      } else {
+        if (context.mounted) {
+          _showAppNotification(
+            context,
+            title: 'صيغة الملف غير مدعومة',
+            message: 'استخدم ملف Excel بصيغة XLSX أو ملف CSV.',
+            type: _AppNotificationType.error,
+          );
+        }
+        return;
       }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ أثناء استيراد الملف: $e'), backgroundColor: Colors.red),
+
+      if (importedEmployees.isEmpty) {
+        if (context.mounted) {
+          _showAppNotification(
+            context,
+            title: 'لم يتم استيراد أي موظف',
+            message: 'تأكد من أن الصف الأول عناوين وأن بيانات الموظفين موجودة في الملف.',
+            type: _AppNotificationType.warning,
+          );
+        }
+        return;
+      }
+
+      final addedCount = await provider.addEmployeesBatch(
+        importedEmployees,
+      );
+
+      final skippedCount = importedEmployees.length - addedCount;
+
+      if (!context.mounted) return;
+
+      if (addedCount > 0) {
+        String message = 'تمت إضافة $addedCount موظف إلى قائمة الموظفين';
+
+        if (skippedCount > 0) {
+          message += ' • تم تجاهل $skippedCount موظف مكرر';
+        }
+
+        _showAppNotification(
+          context,
+          title: 'تم الاستيراد بنجاح',
+          message: message,
+          type: _AppNotificationType.success,
+        );
+      } else {
+        _showAppNotification(
+          context,
+          title: 'لم تتم إضافة موظفين',
+          message: 'جميع الموظفين الموجودين في الملف مضافون مسبقًا.',
+          type: _AppNotificationType.warning,
         );
       }
+    } catch (e, stackTrace) {
+      debugPrint('IMPORT ERROR: $e');
+      debugPrint(stackTrace.toString());
+
+      if (!context.mounted) return;
+
+      _showAppNotification(
+        context,
+        title: 'تعذر استيراد الملف',
+        message: 'حدث خطأ أثناء قراءة الملف. تفاصيل الخطأ: $e',
+        type: _AppNotificationType.error,
+      );
     }
   }
+
+  void _showAppNotification(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required _AppNotificationType type,
+  }) {
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+
+    late OverlayEntry entry;
+
+    final isSuccess = type == _AppNotificationType.success;
+    final isWarning = type == _AppNotificationType.warning;
+
+    final icon = isSuccess
+        ? Icons.check_circle_outline
+        : isWarning
+            ? Icons.info_outline
+            : Icons.error_outline;
+
+    final iconColor = isSuccess
+        ? const Color(0xff16A34A)
+        : isWarning
+            ? const Color(0xffD97706)
+            : const Color(0xffDC2626);
+
+    final iconBackground = isSuccess
+        ? const Color(0xffECFDF5)
+        : isWarning
+            ? const Color(0xffFFFBEB)
+            : const Color(0xffFEF2F2);
+
+    entry = OverlayEntry(
+      builder: (overlayContext) {
+        return Positioned(
+          top: 24,
+          left: 24,
+          right: 24,
+          child: SafeArea(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Material(
+                color: Colors.transparent,
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 220),
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    builder: (context, value, child) {
+                      return Opacity(
+                        opacity: value,
+                        child: Transform.translate(
+                          offset: Offset(0, -12 * (1 - value)),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        maxWidth: 520,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 13,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xffE5E7EB),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x22000000),
+                            blurRadius: 18,
+                            offset: Offset(0, 7),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: iconBackground,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              icon,
+                              color: iconColor,
+                              size: 23,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  title,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xff111827),
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  message,
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    height: 1.45,
+                                    color: Color(0xff6B7280),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => entry.remove(),
+                            child: const Padding(
+                              padding: EdgeInsets.all(5),
+                              child: Icon(
+                                Icons.close,
+                                size: 17,
+                                color: Color(0xff9CA3AF),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(entry);
+
+    Future<void>.delayed(
+      const Duration(seconds: 4),
+      () {
+        if (entry.mounted) {
+          entry.remove();
+        }
+      },
+    );
+  }
+
 
   void _showImportModal(BuildContext context) {
     showDialog(
@@ -607,7 +907,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        onPressed: () => _pickAndImportExcelFile(context),
+                        onPressed: () => _pickAndImportExcelFile(context, dialogContext: ctx),
                         icon: const Icon(Icons.badge_outlined, color: Colors.white, size: 18),
                         label: const Text('اختر ملف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                       ),
@@ -1292,17 +1592,91 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        onPressed: () {
-                          if (nameController.text.isNotEmpty) {
-                            final newEmp = Employee(
-                              id: DateTime.now().millisecondsSinceEpoch.toString(),
-                              name: nameController.text,
-                              idNumber: idController.text,
-                              expiryDate: dateController.text.isEmpty ? "2026-10-01" : dateController.text,
-                              status: "سارية",
+                        onPressed: () async {
+                          final name = nameController.text.trim();
+                          final idNumber = idController.text.trim();
+
+                          if (name.isEmpty) {
+                            _showAppNotification(
+                              context,
+                              title: 'بيانات ناقصة',
+                              message: 'يرجى إدخال اسم الموظف قبل الحفظ.',
+                              type: _AppNotificationType.warning,
                             );
-                            Provider.of<EmployeeProvider>(context, listen: false).addEmployee(newEmp);
-                            Navigator.pop(ctx);
+                            return;
+                          }
+
+                          final provider = Provider.of<EmployeeProvider>(
+                            context,
+                            listen: false,
+                          );
+
+                          // التحقق من وجود الموظف مسبقًا قبل الإضافة.
+                          // رقم الهوية/الإقامة هو المعرف المستخدم لمنع التكرار.
+                          final alreadyExists = idNumber.isNotEmpty &&
+                              provider.employees.any(
+                                (employee) =>
+                                    employee.idNumber.trim() == idNumber,
+                              );
+
+                          if (alreadyExists) {
+                            if (ctx.mounted) {
+                              Navigator.of(ctx).pop();
+                            }
+
+                            if (!context.mounted) return;
+
+                            _showAppNotification(
+                              context,
+                              title: 'تم تجاهل إضافة الموظف',
+                              message:
+                                  'الموظف مسجل مسبقًا بنفس رقم الهوية / الإقامة.',
+                              type: _AppNotificationType.warning,
+                            );
+                            return;
+                          }
+
+                          final newEmployee = Employee(
+                            id: DateTime.now()
+                                .microsecondsSinceEpoch
+                                .toString(),
+                            name: name,
+                            idNumber: idNumber,
+                            expiryDate: dateController.text.isEmpty
+                                ? '2026-10-01'
+                                : dateController.text,
+                            status: 'سارية',
+                          );
+
+                          try {
+                            await provider.addEmployee(newEmployee);
+
+                            if (ctx.mounted) {
+                              Navigator.of(ctx).pop();
+                            }
+
+                            if (!context.mounted) return;
+
+                            _showAppNotification(
+                              context,
+                              title: 'تمت إضافة الموظف',
+                              message:
+                                  'تم تسجيل $name في قائمة الموظفين بنجاح.',
+                              type: _AppNotificationType.success,
+                            );
+                          } catch (e) {
+                            if (ctx.mounted) {
+                              Navigator.of(ctx).pop();
+                            }
+
+                            if (!context.mounted) return;
+
+                            _showAppNotification(
+                              context,
+                              title: 'تعذر إضافة الموظف',
+                              message: 'حدث خطأ أثناء حفظ بيانات الموظف: $e',
+                              type: _AppNotificationType.error,
+                            );
                           }
                         },
                         child: const Text('حفظ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
@@ -1676,15 +2050,22 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   void _confirmDelete(BuildContext context, Employee emp) {
     showDialog(
       context: context,
-      builder: (ctx) => Directionality(
+      builder: (dialogContext) => Directionality(
         textDirection: TextDirection.rtl,
         child: Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 28,
+            vertical: 24,
+          ),
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 360),
-            padding: const EdgeInsets.all(20.0),
+            constraints: const BoxConstraints(
+              maxWidth: 360,
+            ),
+            padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1695,8 +2076,14 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                       backgroundColor: const Color(0xffF3F4F6),
                       radius: 16,
                       child: IconButton(
-                        icon: const Icon(Icons.close, size: 16, color: Colors.grey),
-                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
                       ),
                     ),
                     Container(
@@ -1705,17 +2092,32 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                         color: const Color(0xffFEF2F2),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.warning_amber_rounded, color: Color(0xffDC2626), size: 20),
+                      child: const Icon(
+                        Icons.warning_amber_rounded,
+                        color: Color(0xffDC2626),
+                        size: 20,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 10),
-                const Text('تأكيد الحذف', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
+                const Text(
+                  'تأكيد حذف الموظف',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff111827),
+                  ),
+                ),
+                const SizedBox(height: 7),
                 Text(
-                  'هل أنت تأكد من حذف الموظف ${emp.name}؟ لا يمكن التراجع عن هذا الإجراء.',
+                  'هل أنت متأكد من حذف الموظف؟\n${emp.name}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: const TextStyle(
+                    color: Color(0xff6B7280),
+                    fontSize: 12,
+                    height: 1.5,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -1724,15 +2126,58 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xffDC2626),
+                          foregroundColor: Colors.white,
                           elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                        onPressed: () {
-                          Provider.of<EmployeeProvider>(context, listen: false).removeEmployee(emp.id);
-                          Navigator.pop(ctx);
+                        onPressed: () async {
+                          try {
+                            final provider =
+                                Provider.of<EmployeeProvider>(
+                              context,
+                              listen: false,
+                            );
+
+                            await provider.removeEmployee(emp.id);
+
+                            if (!dialogContext.mounted) return;
+                            Navigator.of(dialogContext).pop();
+
+                            if (!context.mounted) return;
+
+                            _showAppNotification(
+                              context,
+                              title: 'تم حذف الموظف',
+                              message:
+                                  'تم حذف ${emp.name} من قائمة الموظفين بنجاح.',
+                              type: _AppNotificationType.success,
+                            );
+                          } catch (e) {
+                            if (!dialogContext.mounted) return;
+                            Navigator.of(dialogContext).pop();
+
+                            if (!context.mounted) return;
+
+                            _showAppNotification(
+                              context,
+                              title: 'تعذر حذف الموظف',
+                              message: 'حدث خطأ أثناء تنفيذ عملية الحذف: $e',
+                              type: _AppNotificationType.error,
+                            );
+                          }
                         },
-                        child: const Text('حذف نهائي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                        child: const Text(
+                          'حذف نهائي',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -1740,15 +2185,28 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                       child: TextButton(
                         style: TextButton.styleFrom(
                           backgroundColor: const Color(0xffF3F4F6),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                        onPressed: () => Navigator.pop(ctx),
-                        child: const Text('إلغاء', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 14)),
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                        },
+                        child: const Text(
+                          'إلغاء',
+                          style: TextStyle(
+                            color: Color(0xff111827),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -1756,6 +2214,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       ),
     );
   }
+
 
   InputDecoration _inputStyle(String hint) {
     return InputDecoration(
