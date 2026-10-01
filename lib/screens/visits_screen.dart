@@ -378,33 +378,45 @@ class _VisitsScreenState extends State<VisitsScreen> {
   }
 
   Widget _buildVisitRow(BuildContext context, Visit visit) {
-    final status = _statusLabel(visit.expiryDate);
-    final days = _daysRemaining(visit.expiryDate);
-    final statusColor = _statusColor(status);
-    final statusBg = _statusBackground(status);
+  final status = _statusLabel(visit.expiryDate);
+  final days = _daysRemaining(visit.expiryDate);
+  final statusColor = _statusColor(status);
+  final statusBg = _statusBackground(status);
 
-    final daysText = days == null
-        ? ''
-        : days < 0
-            ? 'متأخرة ${days.abs()} يوم'
-            : days == 0
-                ? 'تنتهي اليوم'
-                : 'متبقي $days يوم';
+  final daysText = days == null
+      ? ''
+      : days < 0
+          ? 'متأخرة ${days.abs()} يوم'
+          : days == 0
+              ? 'تنتهي اليوم'
+              : 'متبقي $days يوم';
 
-    return Material(
-      color: Colors.white,
-      child: InkWell(
-        onTap: () => _showActions(context, visit),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 12),
-          decoration: const BoxDecoration(
-            border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB))),
+  return Material(
+    color: Colors.white,
+    child: InkWell(
+      onTap: () => _showActions(context, visit),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 13,
+        ),
+        decoration: const BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: Color(0xFFE5E7EB),
+            ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 2,
+        ),
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+
+            // اسم الزائر
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 70),
                 child: Align(
                   alignment: Alignment.centerRight,
                   child: Column(
@@ -436,49 +448,52 @@ class _VisitsScreenState extends State<VisitsScreen> {
                   ),
                 ),
               ),
-              Expanded(
-                flex: 1,
-                child: Column(
-                  children: [
-                    Text(
-                      visit.borderNumber.isEmpty ? '-' : visit.borderNumber,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: dark,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'رقم الحدود',
-                      style: TextStyle(
-                        color: Color(0xFF9CA3AF),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
+            ),
+
+            // رقم الحدود
+            Expanded(
+              flex: 3,
+              child: Align(
+                alignment: Alignment.center,
+                child: Text(
+                  visit.borderNumber.isEmpty
+                      ? '-'
+                      : visit.borderNumber,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: dark,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ),
-              Expanded(
-                flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
+            ),
+
+            // الحالة
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 20),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: statusBg,
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: Text(
                           status,
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             color: statusColor,
                             fontSize: 10,
@@ -486,12 +501,10 @@ class _VisitsScreenState extends State<VisitsScreen> {
                           ),
                         ),
                       ),
-                    ),
-                    if (daysText.isNotEmpty) ...[
-                      const SizedBox(height: 5),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
+
+                      if (daysText.isNotEmpty) ...[
+                        const SizedBox(height: 5),
+                        Text(
                           daysText,
                           textAlign: TextAlign.left,
                           style: const TextStyle(
@@ -500,17 +513,19 @@ class _VisitsScreenState extends State<VisitsScreen> {
                             fontWeight: FontWeight.w400,
                           ),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Future<void> _showOperations(BuildContext context) async {
     await showDialog<void>(
