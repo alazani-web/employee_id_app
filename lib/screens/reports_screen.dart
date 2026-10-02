@@ -429,36 +429,53 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _statCard(String title, String value, IconData icon, Color color, Color background) {
-    return Container(
-      height: 68,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xffE5E7EB)),
+  Widget _statCard(
+  String title,
+  String value,
+  IconData icon,
+  Color color,
+  Color background,
+) {
+  return Container(
+    height: 68,
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(
+        color: const Color(0xffE5E7EB),
       ),
-      child: Row(
-        textDirection: TextDirection.ltr,
-        children: [
-          // الأيقونة في اليسار.
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 18),
+    ),
+    child: Row(
+      // مهم: الأيقونة يسار والنص يمين
+      textDirection: TextDirection.ltr,
+      children: [
+        // الأيقونة في اليسار
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
           ),
-          const SizedBox(width: 8),
-          // الاسم والرقم في اليمين.
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
+          child: Icon(
+            icon,
+            color: color,
+            size: 18,
+          ),
+        ),
+
+        const SizedBox(width: 8),
+
+        // الاسم والرقم في اليمين
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
                   title,
                   textAlign: TextAlign.right,
                   maxLines: 1,
@@ -470,8 +487,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
+              ),
+
+              const SizedBox(height: 2),
+
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
                   value,
                   textAlign: TextAlign.right,
                   style: TextStyle(
@@ -481,13 +503,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _reportCard({required String title, required int count, required Widget child}) {
     return Container(
