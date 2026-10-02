@@ -283,51 +283,47 @@ class _VisitsScreenState extends State<VisitsScreen> {
     child: Row(
       textDirection: TextDirection.rtl,
       children: const [
-
-   Expanded(
-  flex: 4,
-  child: Padding(
-    padding: const EdgeInsets.only(right: 70),
-    child: Align(
-      alignment: Alignment.centerRight,
-      child: Text(
-        'اسم الزائر',
-        textAlign: TextAlign.right,
-        style: const TextStyle(
-          color: Color(0xFF6B7280),
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    ),
-  ),
-),
-
-  Expanded(
-  flex: 3,
-  child: Padding(
-    padding: const EdgeInsets.only(right: 35),
-    child: Align(
-      alignment: Alignment.centerRight,
-      child: Text(
-        'رقم الحدود',
-        style: TextStyle(
-          color: Color(0xFF6B7280),
-          fontSize: 13,
-        ),
-      ),
-    ),
-  ),
-),
         Expanded(
-          flex: 2,
+          flex: 4,
           child: Align(
-            alignment: Alignment.center,
+            alignment: Alignment.centerRight,
             child: Text(
-              'الحالة',
+              'اسم الزائر',
+              textAlign: TextAlign.right,
               style: TextStyle(
                 color: Color(0xFF6B7280),
                 fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Align(
+            alignment: Alignment.center,
+            child: Text(
+              'رقم الحدود',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 2,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'الحالة',
+              textAlign: TextAlign.left,
+              style: TextStyle(
+                color: Color(0xFF6B7280),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -349,10 +345,10 @@ class _VisitsScreenState extends State<VisitsScreen> {
               color: const Color(0xFFF3E8FF),
               borderRadius: BorderRadius.circular(22),
             ),
-            child: const Icon(
-              Icons.flight_takeoff_outlined,
-              color: purple,
-              size: 35,
+            child: SvgPicture.asset(
+             'assets/icons/plan.svg',
+             width: 35,
+            height: 35,
             ),
           ),
           const SizedBox(height: 12),
@@ -377,9 +373,10 @@ class _VisitsScreenState extends State<VisitsScreen> {
     );
   }
 
-  Widget _buildVisitRow(BuildContext context, Visit visit) {
+ Widget _buildVisitRow(BuildContext context, Visit visit) {
   final status = _statusLabel(visit.expiryDate);
   final days = _daysRemaining(visit.expiryDate);
+
   final statusColor = _statusColor(status);
   final statusBg = _statusBackground(status);
 
@@ -398,7 +395,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(
-          horizontal: 20,
+          horizontal: 30,
           vertical: 13,
         ),
         decoration: const BoxDecoration(
@@ -414,118 +411,94 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
             // اسم الزائر
             Expanded(
-              flex: 4,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 70),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        visit.visitorName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          color: dark,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _displayDate(visit.expiryDate),
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+  flex: 4,
+  child: Align(
+    alignment: Alignment.centerRight,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(
+          visit.visitorName,
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+            color: dark,
+            fontSize: 13.5,
+          ),
+        ),
+        Text(
+          _displayDate(visit.expiryDate),
+          textAlign: TextAlign.right,
+          style: const TextStyle(
+            color: Color(0xFF6B7280),
+            fontSize: 10.5,
+          ),
+        ),
+      ],
+    ),
+  ),
+),
+
 
             // رقم الحدود
             Expanded(
-              flex: 3,
-              child: Align(
-                alignment: Alignment.center,
-                child: Text(
-                  visit.borderNumber.isEmpty
-                      ? '-'
-                      : visit.borderNumber,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: dark,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-            ),
+  flex: 3,
+  child: Align(
+    alignment: Alignment.center,
+    child: Text(
+      visit.borderNumber.isEmpty ? '-' : visit.borderNumber,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: dark,
+        fontSize: 12.5,
+      ),
+    ),
+  ),
+),
+
 
             // الحالة
             Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 20),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: statusBg,
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Text(
-                          status,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-
-                      if (daysText.isNotEmpty) ...[
-                        const SizedBox(height: 5),
-                        Text(
-                          daysText,
-                          textAlign: TextAlign.left,
-                          style: const TextStyle(
-                            color: dark,
-                            fontSize: 9.5,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
+  flex: 2,
+  child: Align(
+    alignment: Alignment.centerLeft,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 6,
+          ),
+          decoration: BoxDecoration(
+            color: statusBg,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Text(
+            status,
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 10,
             ),
+          ),
+        ),
+        if (daysText.isNotEmpty)
+          Text(
+            daysText,
+            style: const TextStyle(
+              fontSize: 9.5,
+            ),
+          ),
+      ],
+    ),
+  ),
+),
+
           ],
         ),
       ),
     ),
   );
 }
-
 
   Future<void> _showOperations(BuildContext context) async {
     await showDialog<void>(
@@ -655,7 +628,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
           border: Border.all(color: const Color(0xFFE7EDF5)),
         ),
         child: Row(
-          children: [
+           textDirection: TextDirection.ltr,
+            children: [
             Container(
               width: 42,
               height: 42,
