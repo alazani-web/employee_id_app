@@ -1062,16 +1062,326 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ============================================================
 
   Future<void> _selectNotificationTime() async {
-    final TimeOfDay? picked = await showTimePicker(
+    int selectedHour = notificationTime.hourOfPeriod == 0
+        ? 12
+        : notificationTime.hourOfPeriod;
+    int selectedMinute = notificationTime.minute;
+    bool selectedPm = notificationTime.period == DayPeriod.pm;
+
+    await showModalBottomSheet<void>(
       context: context,
-      initialTime: notificationTime,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black54,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 58,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Color(0xffD1D5DB),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Color(0xff111827),
+                            ),
+                          ),
+                          const Spacer(),
+                          const Icon(
+                            Icons.schedule_rounded,
+                            color: Color(0xff2563EB),
+                            size: 23,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'اختيار الوقت',
+                            style: TextStyle(
+                              color: Color(0xff111827),
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: _numberDropdown(
+                              'الساعة',
+                              selectedHour,
+                              1,
+                              12,
+                              (value) => setModalState(
+                                () => selectedHour = value,
+                              ),
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.only(top: 14),
+                            child: Text(
+                              ':',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xff111827),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: _numberDropdown(
+                              'الدقيقة',
+                              selectedMinute,
+                              0,
+                              59,
+                              (value) => setModalState(
+                                () => selectedMinute = value,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          _periodSelector(
+                            selectedPm,
+                            (value) => setModalState(
+                              () => selectedPm = value,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size.fromHeight(50),
+                                side: const BorderSide(
+                                  color: Color(0xffE2E8F0),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                              ),
+                              child: const Text(
+                                'إلغاء',
+                                style: TextStyle(
+                                  color: Color(0xff374151),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                setState(() {
+                                  final normalizedHour = selectedPm
+                                      ? (selectedHour == 12
+                                          ? 12
+                                          : selectedHour + 12)
+                                      : (selectedHour == 12
+                                          ? 0
+                                          : selectedHour);
+
+                                  notificationTime = TimeOfDay(
+                                    hour: normalizedHour,
+                                    minute: selectedMinute,
+                                  );
+                                });
+                                Navigator.pop(ctx);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xff2563EB),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                minimumSize: const Size.fromHeight(50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                              ),
+                              child: const Text(
+                                'حسناً',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
+  }
 
-    if (picked == null) return;
+  Widget _numberDropdown(
+    String label,
+    int value,
+    int min,
+    int max,
+    ValueChanged<int> onChanged,
+  ) {
+    return Column(
+      children: [
+        Container(
+          height: 62,
+          width: 112,
+          decoration: BoxDecoration(
+            color: const Color(0xffF8FAFC),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xffE2E8F0)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<int>(
+              value: value,
+              isExpanded: true,
+              alignment: Alignment.center,
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Color(0xff64748B),
+              ),
+              items: List.generate(
+                max - min + 1,
+                (index) {
+                  final number = min + index;
+                  return DropdownMenuItem<int>(
+                    value: number,
+                    child: Center(
+                      child: Text(
+                        number.toString().padLeft(2, '0'),
+                        style: const TextStyle(
+                          fontSize: 27,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xff111827),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              onChanged: (value) {
+                if (value != null) onChanged(value);
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xff64748B),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
 
-    setState(() {
-      notificationTime = picked;
-    });
+  Widget _periodSelector(
+    bool isPm,
+    ValueChanged<bool> onChanged,
+  ) {
+    return Container(
+      width: 68,
+      height: 62,
+      decoration: BoxDecoration(
+        color: const Color(0xffF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xffE2E8F0)),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () => onChanged(false),
+              child: Container(
+                width: double.infinity,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: !isPm
+                      ? const Color(0xff2563EB)
+                      : Colors.transparent,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  'ص',
+                  style: TextStyle(
+                    color: !isPm
+                        ? Colors.white
+                        : const Color(0xff111827),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Container(height: 1, color: const Color(0xffE2E8F0)),
+          Expanded(
+            child: InkWell(
+              onTap: () => onChanged(true),
+              child: Container(
+                width: double.infinity,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isPm
+                      ? const Color(0xff2563EB)
+                      : Colors.transparent,
+                  borderRadius: const BorderRadius.vertical(
+                    bottom: Radius.circular(14),
+                  ),
+                ),
+                child: Text(
+                  'م',
+                  style: TextStyle(
+                    color: isPm
+                        ? Colors.white
+                        : const Color(0xff111827),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _saveNotificationSettings() {
