@@ -1,12 +1,50 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import '../providers/employee_provider.dart';
 import '../providers/visit_provider.dart';
 import '../providers/alert_provider.dart'; // استيراد مزود التنبيهات
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  static const String _documentsStorageKey = 'employee_id_app_documents_v2';
+  int _documentCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDocumentCount();
+  }
+
+  Future<void> _loadDocumentCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rawDocuments = prefs.getString(_documentsStorageKey);
+      int count = 0;
+
+      if (rawDocuments != null && rawDocuments.isNotEmpty) {
+        final decoded = jsonDecode(rawDocuments);
+        if (decoded is List) {
+          count = decoded.length;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() => _documentCount = count);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _documentCount = 0);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,12 +157,12 @@ class HomeScreen extends StatelessWidget {
                     color: const Color(0xff2864D7),
                     background: const Color(0xffEFF4FF),
                   ),
-                  const StatCard(
+                  StatCard(
                     title: "الوثائق",
-                    count: "0",
+                    count: "$_documentCount",
                     icon: "assets/icons/folder_open.svg",
-                    color: Color(0xff2864D7),
-                    background: Color(0xffEFF4FF),
+                    color: const Color(0xff2864D7),
+                    background: const Color(0xffEFF4FF),
                   ),
                   StatCard(
                     title: "الزيارات",

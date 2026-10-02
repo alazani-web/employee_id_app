@@ -2,8 +2,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../widgets/app_date_picker.dart';
 import '../widgets/confirm_delete_dialog.dart';
+import '../providers/alert_provider.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -112,6 +114,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     } catch (_) {
       // إذا كانت البيانات القديمة غير صالحة، لا نوقف الشاشة.
     }
+  }
+
+  Future<void> _saveDocumentsAndRefreshAlerts() async {
+    await _saveDocuments();
+    if (!mounted) return;
+    await context.read<AlertProvider>().refreshDocuments();
   }
 
   Future<void> _saveDocuments() async {
@@ -709,7 +717,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                           _documentLogs[number] = oldLogs;
                                         }
                                       }
-                                      await _saveDocuments();
+                                      await _saveDocumentsAndRefreshAlerts();
                                       _showMessage("تم تعديل الوثيقة بنجاح");
                                     } else {
                                       final newDocument = <String, dynamic>{
@@ -730,7 +738,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                         number,
                                         'تمت إضافة الوثيقة',
                                       );
-                                      await _saveDocuments();
+                                      await _saveDocumentsAndRefreshAlerts();
                                       _showMessage("تمت إضافة الوثيقة بنجاح");
                                     }
 
@@ -1103,7 +1111,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
                                   newTypeController.clear();
                                   setDialogState(() {});
-                                  await _saveDocuments();
+                                  await _saveDocumentsAndRefreshAlerts();
                                   _showMessage("تمت إضافة نوع الوثيقة");
                                 },
                                 style: ElevatedButton.styleFrom(
@@ -1579,7 +1587,6 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
     _documentLogs.putIfAbsent(number, () => []);
     _documentLogs[number]!.insert(0, '$message — $timestamp');
-    _saveDocuments();
   }
 
   // ============================================================
@@ -1862,7 +1869,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                             'حتى ${_displayDate(expiry)}',
                                     );
 
-                                    await _saveDocuments();
+                                    await _saveDocumentsAndRefreshAlerts();
 
                                     Navigator.pop(dialogContext);
                                     _showMessage(
@@ -2030,7 +2037,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     });
 
     _documentLogs.remove(number);
-    await _saveDocuments();
+    await _saveDocumentsAndRefreshAlerts();
 
     if (!context.mounted) return;
     _showMessage("تم حذف الوثيقة من القائمة بنجاح");
