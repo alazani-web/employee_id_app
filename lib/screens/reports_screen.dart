@@ -253,7 +253,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     Text(
                       'التقارير',
                       textAlign: TextAlign.right,
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xff111827)),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xff111827)),
                     ),
                     SizedBox(height: 4),
                     Text(
@@ -285,7 +285,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   icon: LucideIcons.download,
                   foreground: const Color(0xff16A34A),
                   background: const Color(0xffF0FDF4),
-                  border: const Color(0xffBBF7D0),
+                  border: Colors.transparent,
                   onPressed: _exportExcel,
                 ),
               ),
@@ -296,7 +296,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   icon: LucideIcons.fileDown,
                   foreground: const Color(0xffDC2626),
                   background: const Color(0xffFEF2F2),
-                  border: const Color(0xffFECACA),
+                  border: Colors.transparent,
                   onPressed: _exportPdf,
                 ),
               ),
@@ -323,11 +323,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
           await onPressed();
         },
         child: Container(
-          height: 38,
+          height: 40,
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(11),
-            border: Border.all(color: border),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -364,7 +363,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               borderRadius: BorderRadius.circular(24),
               onTap: () => setState(() => selectedTab = index),
               child: Container(
-                height: 38,
+                height: 46,
                 decoration: BoxDecoration(
                   color: active ? primaryBlue : Colors.white,
                   borderRadius: BorderRadius.circular(24),
@@ -373,13 +372,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(tabIcons[index], size: 17, color: active ? Colors.white : const Color(0xff4B5563)),
-                    const SizedBox(width: 6),
+                    Icon(tabIcons[index], size: 19, color: active ? Colors.white : const Color(0xff4B5563)),
+                    const SizedBox(width: 7),
                     Text(
                       tabs[index],
                       style: TextStyle(
                         color: active ? Colors.white : const Color(0xff4B5563),
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -422,33 +421,34 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _statCard(String title, String value, IconData icon, Color color, Color background) {
     return Container(
-      height: 68,
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+      height: 82,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xffE5E7EB)),
       ),
       child: Row(
+        textDirection: TextDirection.ltr,
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: color, size: 19),
+            child: Icon(icon, color: color, size: 21),
           ),
-          const SizedBox(width: 7),
+          const SizedBox(width: 9),
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(title, style: const TextStyle(fontSize: 11, color: Color(0xff6B7280), fontWeight: FontWeight.w600)),
+                Text(title, style: const TextStyle(fontSize: 12, color: Color(0xff6B7280), fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
-                Text(value, style: TextStyle(fontSize: 22, height: 1, color: color, fontWeight: FontWeight.w800)),
+                Text(value, style: TextStyle(fontSize: 25, height: 1, color: color, fontWeight: FontWeight.w800)),
               ],
             ),
           ),
@@ -470,13 +470,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(13, 10, 13, 8),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xff111827))),
                 const SizedBox(height: 4),
-                Text('عدد النتائج: $count', style: const TextStyle(fontSize: 11, color: Color(0xff6B7280))),
+                Text('عدد النتائج: $count', style: const TextStyle(fontSize: 12, color: Color(0xff6B7280))),
               ],
             ),
           ),
@@ -652,7 +652,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: Column(
           children: [
-            Icon(LucideIcons.fileText, size: 48, color: Colors.grey.shade300),
+            Icon(LucideIcons.fileText, size: 44, color: Colors.grey.shade300),
             const SizedBox(height: 10),
             Text('لا توجد بيانات للعرض في التقرير', style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
           ],
