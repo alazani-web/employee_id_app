@@ -1,153 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' as excel_lib;
 import '../providers/employee_provider.dart';
 import '../models/employee.dart';
-
-List<Map<String, String>> _parseEmployeesFileInWorker(List<dynamic> args) {
-  final bytes = Uint8List.fromList(List<int>.from(args[0] as List));
-  final fileName = (args[1] as String).toLowerCase();
-
-  String normalizeHeader(String value) {
-    return value
-        .replaceAll('\ufeff', '')
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[\s_\-/:\\]+'), '')
-        .replaceAll('أ', 'ا')
-        .replaceAll('إ', 'ا')
-        .replaceAll('آ', 'ا')
-        .replaceAll('ة', 'ه');
-  }
-
-  bool isNameHeader(String value) => [
-        'الاسم', 'الاسمالكامل', 'اسمالكامل', 'اسمالموظف', 'الاسمبالكامل',
-        'الاسمرباعي', 'اسمالرباعي', 'name', 'fullname', 'employeename'
-      ].contains(normalizeHeader(value));
-
-  bool isIdHeader(String value) => [
-        'رقمالهويه', 'رقمالهوية', 'رقمالهويهالاقامه', 'رقمالهويةالاقامة',
-        'رقمالاقامه', 'رقمالاقامة', 'الهوية', 'الهويه', 'الاقامه', 'الاقامة',
-        'id', 'idnumber', 'iqama', 'iqamanumber', 'residencenumber'
-      ].contains(normalizeHeader(value));
-
-  bool isExpiryHeader(String value) => [
-        'تاريخانتهاءالهويه', 'تاريخانتهاءالهوية', 'تاريخانتهاءالاقامه',
-        'تاريخانتهاءالاقامة', 'انتهاءالهويه', 'انتهاءالهوية', 'انتهاءالاقامه',
-        'انتهاءالاقامة', 'expirydate', 'identityexpiry', 'residenceexpiry'
-      ].contains(normalizeHeader(value));
-
-  String cellValue(dynamic cell) {
-    if (cell == null || cell.value == null) return '';
-    final value = cell.value;
-    if (value is excel_lib.TextCellValue) return value.value.text?.trim() ?? '';
-    if (value is excel_lib.IntCellValue) return value.value.toString();
-    if (value is excel_lib.DoubleCellValue) {
-      final n = value.value;
-      return n == n.truncateToDouble() ? n.toInt().toString() : n.toString();
-    }
-    if (value is excel_lib.DateCellValue) {
-      return '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-    }
-    return value.toString().trim();
-  }
-
-  String expiryCellValue(dynamic cell) {
-    if (cell == null || cell.value == null) return '';
-    final value = cell.value;
-    if (value is excel_lib.DateCellValue) {
-      return '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-    }
-    final raw = cellValue(cell);
-    final serial = double.tryParse(raw);
-    if (serial != null && serial >= 20000 && serial <= 80000) {
-      final date = DateTime(1899, 12, 30).add(Duration(days: serial.round()));
-      return '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    }
-    return raw;
-  }
-
-  List<String> parseCsvLine(String line, {String delimiter = ','}) {
-    final result = <String>[];
-    final buffer = StringBuffer();
-    bool inQuotes = false;
-    for (int i = 0; i < line.length; i++) {
-      final char = line[i];
-      if (char == '"') {
-        if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
-          buffer.write('"');
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char == delimiter && !inQuotes) {
-        result.add(buffer.toString());
-        buffer.clear();
-      } else {
-        buffer.write(char);
-      }
-    }
-    result.add(buffer.toString());
-    return result;
-  }
-
-  final output = <Map<String, String>>[];
-
-  void add(String name, String id, String expiry) {
-    name = name.trim();
-    id = id.trim();
-    expiry = expiry.trim();
-    if (name.isEmpty) return;
-    output.add({'name': name, 'id': id, 'expiry': expiry});
-  }
-
-  if (fileName.endsWith('.xlsx')) {
-    final workbook = excel_lib.Excel.decodeBytes(bytes);
-    for (final sheet in workbook.tables.values) {
-      if (sheet.maxRows == 0) continue;
-      final headerRow = sheet.rows.first;
-      int nameIndex = -1, idIndex = -1, expiryIndex = -1;
-      for (int i = 0; i < headerRow.length; i++) {
-        final h = cellValue(headerRow[i]);
-        if (nameIndex == -1 && isNameHeader(h)) nameIndex = i;
-        if (idIndex == -1 && isIdHeader(h)) idIndex = i;
-        if (expiryIndex == -1 && isExpiryHeader(h)) expiryIndex = i;
-      }
-      if (nameIndex == -1 || idIndex == -1 || expiryIndex == -1) continue;
-      for (int i = 1; i < sheet.maxRows; i++) {
-        final row = sheet.rows[i];
-        add(
-          nameIndex < row.length ? cellValue(row[nameIndex]) : '',
-          idIndex < row.length ? cellValue(row[idIndex]) : '',
-          expiryIndex < row.length ? expiryCellValue(row[expiryIndex]) : '',
-        );
-      }
-    }
-  } else {
-    final text = utf8.decode(bytes, allowMalformed: true);
-    final lines = text.split(RegExp(r'\r?\n')).where((x) => x.trim().isNotEmpty).toList();
-    if (lines.isEmpty) return output;
-    final delimiter = lines.first.contains(';') && !lines.first.contains(',') ? ';' : ',';
-    final headers = parseCsvLine(lines.first, delimiter: delimiter);
-    int nameIndex = -1, idIndex = -1, expiryIndex = -1;
-    for (int i = 0; i < headers.length; i++) {
-      if (nameIndex == -1 && isNameHeader(headers[i])) nameIndex = i;
-      if (idIndex == -1 && isIdHeader(headers[i])) idIndex = i;
-      if (expiryIndex == -1 && isExpiryHeader(headers[i])) expiryIndex = i;
-    }
-    if (nameIndex == -1 || idIndex == -1 || expiryIndex == -1) return output;
-    for (int i = 1; i < lines.length; i++) {
-      final row = parseCsvLine(lines[i], delimiter: delimiter);
-      String at(int index) => index >= 0 && index < row.length ? row[index].trim() : '';
-      add(at(nameIndex), at(idIndex), at(expiryIndex));
-    }
-  }
-  return output;
-}
 
 class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key});
@@ -167,6 +25,33 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     "منتهي",
   ];
 
+  DateTime? _parseEmployeeDate(String value) {
+    final raw = value.trim();
+    if (raw.isEmpty) return null;
+
+    // ISO: yyyy-MM-dd
+    final iso = DateTime.tryParse(raw);
+    if (iso != null) {
+      return DateTime(iso.year, iso.month, iso.day);
+    }
+
+    // Arabic/European display format: dd/MM/yyyy or dd-MM-yyyy
+    final match = RegExp(r'^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$').firstMatch(raw);
+    if (match != null) {
+      final day = int.tryParse(match.group(1)!);
+      final month = int.tryParse(match.group(2)!);
+      final year = int.tryParse(match.group(3)!);
+      if (day != null && month != null && year != null) {
+        final date = DateTime(year, month, day);
+        if (date.year == year && date.month == month && date.day == day) {
+          return date;
+        }
+      }
+    }
+
+    return null;
+  }
+
   Map<String, dynamic> _getCalculatedStatus(String expiryDateStr) {
     final expiryDate = _parseEmployeeDate(expiryDateStr);
     if (expiryDate == null) {
@@ -175,45 +60,15 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final expiryDay = DateTime(expiryDate.year, expiryDate.month, expiryDate.day);
-    final difference = expiryDay.difference(today).inDays;
+    final difference = expiryDate.difference(today).inDays;
 
     if (difference < 0) {
       return {'status': 'منتهية', 'daysLeft': difference};
-    } else if (difference <= 30) {
+    }
+    if (difference <= 30) {
       return {'status': 'تحتاج متابعة', 'daysLeft': difference};
-    } else {
-      return {'status': 'سارية', 'daysLeft': difference};
     }
-  }
-
-  DateTime? _parseEmployeeDate(String raw) {
-    var value = raw.trim();
-    const arabic = '٠١٢٣٤٥٦٧٨٩';
-    const western = '0123456789';
-    for (int i = 0; i < arabic.length; i++) {
-      value = value.replaceAll(arabic[i], western[i]);
-    }
-
-    value = value.replaceAll('\\', '/').replaceAll('.', '/');
-    final direct = DateTime.tryParse(value);
-    if (direct != null) return direct;
-
-    final parts = value.replaceAll('-', '/').split('/').map((p) => p.trim()).toList();
-    if (parts.length != 3) return null;
-
-    final a = int.tryParse(parts[0]);
-    final b = int.tryParse(parts[1]);
-    final c = int.tryParse(parts[2]);
-    if (a == null || b == null || c == null) return null;
-
-    if (a > 31) {
-      return DateTime.tryParse('${a.toString().padLeft(4, '0')}-${b.toString().padLeft(2, '0')}-${c.toString().padLeft(2, '0')}');
-    }
-    if (c > 31) {
-      return DateTime.tryParse('${c.toString().padLeft(4, '0')}-${b.toString().padLeft(2, '0')}-${a.toString().padLeft(2, '0')}');
-    }
-    return null;
+    return {'status': 'سارية', 'daysLeft': difference};
   }
 
   // دالة حساب تاريخ التجديد حسب نظام الجوازات السعودية (إضافة شهور مع الخصم يوماً واحداً)
@@ -595,111 +450,389 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 
   Future<void> _pickAndImportExcelFile(BuildContext context) async {
+    bool loadingShown = false;
+
+    void closeLoadingDialog() {
+      if (!loadingShown || !context.mounted) return;
+      loadingShown = false;
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['xlsx', 'csv'],
         withData: true,
       );
+
       if (result == null || result.files.isEmpty) return;
 
       final file = result.files.first;
       final bytes = file.bytes;
+
       if (bytes == null || bytes.isEmpty) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تعذر قراءة بيانات الملف'), backgroundColor: Colors.red),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('تعذر قراءة بيانات الملف'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
         return;
       }
 
-      // قراءة الملف خارج واجهة التطبيق، ثم الحفظ دفعة واحدة مثل استيراد الزيارات.
-      final rows = await compute(
-        _parseEmployeesFileInWorker,
-        <dynamic>[bytes, file.name],
-      );
-
       if (!context.mounted) return;
+
       final provider = Provider.of<EmployeeProvider>(context, listen: false);
 
-      String normalizeIdLocal(String value) {
+      // نعرض التحميل فوق نافذة الاستيراد، ولا نغلق أي Route قبل انتهاء العملية.
+      loadingShown = true;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            content: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                SizedBox(width: 14),
+                Flexible(
+                  child: Text(
+                    'جاري استيراد الموظفين...\nيرجى الانتظار',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      // نعطي Flutter/Chrome فرصة لرسم نافذة التحميل قبل تحليل Excel.
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      if (!context.mounted) return;
+
+      String normalizeHeader(String value) {
+        return value
+            .replaceAll('\ufeff', '')
+            .trim()
+            .toLowerCase()
+            .replaceAll(RegExp(r'[\s_\-/:\\]+'), '')
+            .replaceAll('أ', 'ا')
+            .replaceAll('إ', 'ا')
+            .replaceAll('آ', 'ا')
+            .replaceAll('ة', 'ه')
+            .replaceAll('ى', 'ي');
+      }
+
+      String normalizeId(String value) {
         var result = value.trim();
         const arabic = '٠١٢٣٤٥٦٧٨٩';
         const western = '0123456789';
         for (int i = 0; i < arabic.length; i++) {
           result = result.replaceAll(arabic[i], western[i]);
         }
-        return result.replaceAll(RegExp(r'\.0+$'), '').replaceAll(RegExp(r'[\s\-_/+,]+'), '');
+        return result
+            .replaceAll(RegExp(r'\.0+$'), '')
+            .replaceAll(RegExp(r'[\s\-_/+,]+'), '');
       }
 
-      String normalizeNameLocal(String value) {
-        return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '')
-            .replaceAll('أ', 'ا').replaceAll('إ', 'ا').replaceAll('آ', 'ا')
-            .replaceAll('ة', 'ه').replaceAll('ى', 'ي');
+      String normalizeName(String value) {
+        return value
+            .trim()
+            .toLowerCase()
+            .replaceAll(RegExp(r'\s+'), '')
+            .replaceAll('أ', 'ا')
+            .replaceAll('إ', 'ا')
+            .replaceAll('آ', 'ا')
+            .replaceAll('ة', 'ه');
+      }
+
+      bool isNameHeader(String value) {
+        final h = normalizeHeader(value);
+        return [
+          'الاسم',
+          'الاسمالكامل',
+          'اسمالكامل',
+          'اسمالموظف',
+          'الاسمبالكامل',
+          'الاسمرباعي',
+          'الاسمالرباعي',
+          'name',
+          'fullname',
+          'employeename',
+        ].contains(h);
+      }
+
+      bool isIdHeader(String value) {
+        final h = normalizeHeader(value);
+        return [
+          'رقمالهويه',
+          'رقمالهوية',
+          'رقمالهويهالاقامه',
+          'رقمالهويةالاقامة',
+          'رقمالاقامه',
+          'رقمالاقامة',
+          'الهوية',
+          'الهوية',
+          'الهويه',
+          'الاقامه',
+          'الاقامة',
+          'id',
+          'idnumber',
+          'iqama',
+          'iqamanumber',
+          'residencenumber',
+        ].contains(h);
+      }
+
+      bool isExpiryHeader(String value) {
+        final h = normalizeHeader(value);
+        return [
+          'تاريخانتهاءالهويه',
+          'تاريخانتهاءالهوية',
+          'تاريخانتهاءالاقامه',
+          'تاريخانتهاءالاقامة',
+          'انتهاءالهويه',
+          'انتهاءالهوية',
+          'انتهاءالاقامه',
+          'انتهاءالاقامة',
+          'expirydate',
+          'identityexpiry',
+          'residenceexpiry',
+        ].contains(h);
+      }
+
+      String cellValue(dynamic cell) {
+        if (cell == null || cell.value == null) return '';
+        final value = cell.value;
+
+        if (value is excel_lib.TextCellValue) {
+          return value.value.text?.trim() ?? '';
+        }
+        if (value is excel_lib.IntCellValue) {
+          return value.value.toString();
+        }
+        if (value is excel_lib.DoubleCellValue) {
+          final number = value.value;
+          return number == number.truncateToDouble()
+              ? number.toInt().toString()
+              : number.toString();
+        }
+        if (value is excel_lib.DateCellValue) {
+          return '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+        }
+        return value.toString().trim();
+      }
+
+      String csvCell(List<String> row, int index) {
+        return index >= 0 && index < row.length ? row[index].trim() : '';
       }
 
       final existingIds = provider.employees
-          .map((e) => normalizeIdLocal(e.idNumber))
+          .map((e) => normalizeId(e.idNumber))
           .where((e) => e.isNotEmpty)
           .toSet();
+
       final existingNames = provider.employees
-          .map((e) => normalizeNameLocal(e.name))
+          .map((e) => normalizeName(e.name))
           .where((e) => e.isNotEmpty)
           .toSet();
 
-      final pending = <Employee>[];
+      final importedEmployees = <Employee>[];
+      int importedCount = 0;
       int skippedCount = 0;
-      for (int i = 0; i < rows.length; i++) {
-        final row = rows[i];
-        final name = (row['name'] ?? '').trim();
-        final idNumber = (row['id'] ?? '').trim();
-        final expiryDate = (row['expiry'] ?? '').trim();
-        if (name.isEmpty) continue;
+      bool foundRequiredColumns = false;
 
-        final idKey = normalizeIdLocal(idNumber);
-        final nameKey = normalizeNameLocal(name);
-        final duplicateById = idKey.isNotEmpty && existingIds.contains(idKey);
-        final duplicateByName = idKey.isEmpty && nameKey.isNotEmpty && existingNames.contains(nameKey);
+      void addEmployee(String name, String idNumber, String expiryDate) {
+        name = name.trim();
+        idNumber = idNumber.trim();
+        expiryDate = expiryDate.trim();
+
+        if (name.isEmpty) return;
+
+        final idKey = normalizeId(idNumber);
+        final nameKey = normalizeName(name);
+
+        // التكرار يعتمد على رقم الهوية، والاسم فقط إذا لم يوجد رقم هوية.
+        final duplicateById =
+            idKey.isNotEmpty && existingIds.contains(idKey);
+        final duplicateByName =
+            idKey.isEmpty &&
+            nameKey.isNotEmpty &&
+            existingNames.contains(nameKey);
+
         if (duplicateById || duplicateByName) {
           skippedCount++;
-          continue;
+          return;
         }
 
-        pending.add(Employee(
-          id: '${DateTime.now().microsecondsSinceEpoch}_$i',
-          name: name,
-          idNumber: idNumber,
-          expiryDate: expiryDate,
-          status: 'سارية',
-        ));
+        importedEmployees.add(
+          Employee(
+            id: '${DateTime.now().microsecondsSinceEpoch}_${importedEmployees.length}',
+            name: name,
+            idNumber: idNumber,
+            expiryDate: expiryDate,
+            status: _getCalculatedStatus(expiryDate)['status'] as String,
+          ),
+        );
+
         if (idKey.isNotEmpty) existingIds.add(idKey);
         if (nameKey.isNotEmpty) existingNames.add(nameKey);
       }
 
-      // مهم: حفظ واحد فقط بدل حفظ كل موظف منفردًا.
-      final importedCount = await provider.addEmployeesBatch(pending);
+      if (file.name.toLowerCase().endsWith('.xlsx')) {
+        final workbook = excel_lib.Excel.decodeBytes(bytes);
+
+        for (final sheetName in workbook.tables.keys) {
+          final sheet = workbook.tables[sheetName];
+          if (sheet == null || sheet.maxRows == 0) continue;
+
+          final headerRow = sheet.rows.first;
+          int nameIndex = -1;
+          int idIndex = -1;
+          int expiryIndex = -1;
+
+          for (int i = 0; i < headerRow.length; i++) {
+            final header = cellValue(headerRow[i]);
+            if (nameIndex == -1 && isNameHeader(header)) nameIndex = i;
+            if (idIndex == -1 && isIdHeader(header)) idIndex = i;
+            if (expiryIndex == -1 && isExpiryHeader(header)) {
+              expiryIndex = i;
+            }
+          }
+
+          // لا نعتمد على ترتيب الأعمدة؛ إذا لم يجد أعمدة الموظفين المطلوبة
+          // في هذا الشيت يتم تجاهله بالكامل.
+          if (nameIndex == -1 || idIndex == -1 || expiryIndex == -1) {
+            continue;
+          }
+
+          foundRequiredColumns = true;
+
+          for (int rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
+            final row = sheet.rows[rowIndex];
+            if (row.isEmpty) continue;
+
+            addEmployee(
+              cellValue(nameIndex < row.length ? row[nameIndex] : null),
+              cellValue(idIndex < row.length ? row[idIndex] : null),
+              cellValue(expiryIndex < row.length ? row[expiryIndex] : null),
+            );
+          }
+        }
+      } else {
+        final csvText = utf8.decode(bytes, allowMalformed: true);
+        final lines = csvText
+            .split(RegExp(r'\r?\n'))
+            .where((line) => line.trim().isNotEmpty)
+            .toList();
+
+        if (lines.isNotEmpty) {
+          final delimiter =
+              lines.first.contains(';') && !lines.first.contains(',')
+                  ? ';'
+                  : ',';
+
+          final headers = _parseCsvLine(
+            lines.first,
+            delimiter: delimiter,
+          );
+
+          int nameIndex = -1;
+          int idIndex = -1;
+          int expiryIndex = -1;
+
+          for (int i = 0; i < headers.length; i++) {
+            if (nameIndex == -1 && isNameHeader(headers[i])) {
+              nameIndex = i;
+            }
+            if (idIndex == -1 && isIdHeader(headers[i])) {
+              idIndex = i;
+            }
+            if (expiryIndex == -1 && isExpiryHeader(headers[i])) {
+              expiryIndex = i;
+            }
+          }
+
+          if (nameIndex != -1 &&
+              idIndex != -1 &&
+              expiryIndex != -1) {
+            foundRequiredColumns = true;
+
+            for (int rowIndex = 1; rowIndex < lines.length; rowIndex++) {
+              final row = _parseCsvLine(
+                lines[rowIndex],
+                delimiter: delimiter,
+              );
+              if (row.isEmpty) continue;
+
+              addEmployee(
+                csvCell(row, nameIndex),
+                csvCell(row, idIndex),
+                csvCell(row, expiryIndex),
+              );
+            }
+          }
+        }
+      }
+
+      if (!foundRequiredColumns) {
+        throw Exception(
+          'لم يتم العثور على الأعمدة المطلوبة: اسم الموظف، رقم الهوية/الإقامة، تاريخ انتهاء الهوية.',
+        );
+      }
+
+      // مهم: نحفظ كل الموظفين دفعة واحدة مثل استيراد الزيارات،
+      // بدل استدعاء addEmployee لكل صف (وهذا كان سبب التجمّد).
+      importedCount = await provider.addEmployeesBatch(importedEmployees);
+
       if (!context.mounted) return;
-      Navigator.pop(context);
+
+      closeLoadingDialog();
+
+      // نغلق نافذة الاستيراد الأصلية مرة واحدة فقط.
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
 
       final details = <String>[];
-      if (importedCount > 0) details.add('تم استيراد $importedCount موظف بنجاح');
-      if (skippedCount > 0) details.add('تم تجاهل $skippedCount موظف مكرر');
-      if (details.isEmpty) details.add('لم يتم العثور على موظفين جدد.');
+      if (importedCount > 0) {
+        details.add('تم استيراد $importedCount موظف بنجاح');
+      }
+      if (skippedCount > 0) {
+        details.add('تم تجاهل $skippedCount موظف مكرر');
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(details.join(' • ')),
-          backgroundColor: importedCount > 0 ? Colors.green : Colors.orange,
+          content: Text(
+            details.isEmpty
+                ? 'لم يتم العثور على موظفين جدد.'
+                : details.join(' • '),
+          ),
+          backgroundColor:
+              importedCount > 0 ? Colors.green : Colors.orange,
           duration: const Duration(seconds: 4),
         ),
       );
-    } catch (e, stackTrace) {
-      debugPrint('EMPLOYEE IMPORT ERROR: $e');
-      debugPrint(stackTrace.toString());
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء استيراد الملف: $e'), backgroundColor: Colors.red),
-      );
+    } catch (e) {
+      closeLoadingDialog();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('حدث خطأ أثناء استيراد الملف: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -792,7 +925,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        onPressed: () => _pickAndImportExcelFile(context),
+                        onPressed: () => _pickAndImportExcelFile(ctx),
                         icon: const Icon(Icons.badge_outlined, color: Colors.white, size: 18),
                         label: const Text('اختر ملف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                       ),

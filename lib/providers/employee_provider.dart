@@ -206,34 +206,7 @@ class EmployeeProvider extends ChangeNotifier {
         }
       }
 
-      // البيانات التجريبية تظهر فقط عند أول تشغيل وعدم وجود بيانات محفوظة.
-      if ((saved == null || saved.isEmpty) && _employees.isEmpty) {
-        _employees.addAll([
-          Employee(
-            id: '1',
-            name: 'أحمد المحمد',
-            idNumber: '1092837465',
-            expiryDate: '2027-05-20',
-            status: 'سارية',
-          ),
-          Employee(
-            id: '2',
-            name: 'سارة الخالد',
-            idNumber: '1029384756',
-            expiryDate: '2026-11-10',
-            status: 'سارية',
-          ),
-          Employee(
-            id: '3',
-            name: 'إبراهيم طاهر الكشميري',
-            idNumber: '2535922492',
-            expiryDate: '2026-10-16',
-            status: 'تحتاج متابعة',
-          ),
-        ]);
-
-        await _saveEmployeesToStorage();
-      }
+      // لا نضيف بيانات تجريبية. يبدأ النظام ببيانات المستخدم الفعلية فقط.
     } catch (e, stackTrace) {
       // لا نترك الـ Provider في حالة تمنع الاستيراد إذا حدث خطأ في التخزين.
       debugPrint('Employee storage error: $e');

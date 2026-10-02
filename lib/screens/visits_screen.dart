@@ -394,7 +394,9 @@ class _VisitsScreenState extends State<VisitsScreen> {
     return Material(
       color: Colors.white,
       child: InkWell(
-        onTap: () => _showActions(context, visit),
+        // لا تظهر قائمة إجراءات الزيارة إلا بالضغط المطول.
+        onTap: () {},
+        onLongPress: () => _showActions(context, visit),
         child: Directionality(
           textDirection: TextDirection.ltr,
           child: Container(
