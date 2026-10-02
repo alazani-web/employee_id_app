@@ -211,14 +211,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   _buildHeaderCard(),
                   const SizedBox(height: 12),
                   _buildTabs(),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   _buildStats(
                     employeeCount: employees.length,
                     visitCount: visits.length,
                     documentCount: _documentCount,
                     reportCount: reportCount,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   if (selectedTab == 0)
                     _buildEmployeesReport(employees)
                   else if (selectedTab == 1)
@@ -247,21 +247,31 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Row(
             children: [
               const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'التقارير',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xff111827)),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'تصدير ومراجعة تقارير الموظفين والزيارات والتجديدات',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(fontSize: 11, height: 1.3, color: Color(0xff6B7280)),
-                    ),
-                  ],
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'التقارير',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xff111827)),
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'تصدير ومراجعة تقارير الموظفين والزيارات والتجديدات',
+                          textAlign: TextAlign.right,
+                          style: TextStyle(fontSize: 11, height: 1.3, color: Color(0xff6B7280)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -363,7 +373,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               borderRadius: BorderRadius.circular(24),
               onTap: () => setState(() => selectedTab = index),
               child: Container(
-                height: 46,
+                height: 44,
                 decoration: BoxDecoration(
                   color: active ? primaryBlue : Colors.white,
                   borderRadius: BorderRadius.circular(24),
@@ -421,34 +431,56 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _statCard(String title, String value, IconData icon, Color color, Color background) {
     return Container(
-      height: 82,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      height: 68,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xffE5E7EB)),
       ),
       child: Row(
         textDirection: TextDirection.ltr,
         children: [
+          // الأيقونة في اليسار.
           Container(
-            width: 40,
-            height: 40,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 21),
+            child: Icon(icon, color: color, size: 18),
           ),
-          const SizedBox(width: 9),
+          const SizedBox(width: 8),
+          // الاسم والرقم في اليمين.
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(title, style: const TextStyle(fontSize: 12, color: Color(0xff6B7280), fontWeight: FontWeight.w600)),
+                Text(
+                  title,
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.1,
+                    color: Color(0xff6B7280),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(value, style: TextStyle(fontSize: 25, height: 1, color: color, fontWeight: FontWeight.w800)),
+                Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 22,
+                    height: 1,
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ],
             ),
           ),
@@ -471,13 +503,31 @@ class _ReportsScreenState extends State<ReportsScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xff111827))),
-                const SizedBox(height: 4),
-                Text('عدد النتائج: $count', style: const TextStyle(fontSize: 12, color: Color(0xff6B7280))),
-              ],
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      title,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xff111827)),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      'عدد النتائج: $count',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(fontSize: 12, color: Color(0xff6B7280)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           child,
