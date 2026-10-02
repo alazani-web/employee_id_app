@@ -23,6 +23,7 @@ dependencies:
 
   # الواجهات والأيقونات
   flutter_svg: ^2.0.10
+  lucide_icons_flutter: ^3.1.21
 
   # إدارة البيانات
   provider: ^6.1.2
@@ -32,11 +33,20 @@ dependencies:
 
   # استيراد وإنشاء ملفات Excel واختيار الملفات
   file_picker: ^9.1.0
-  excel: ^4.0.0
+  excel: ^4.0.6
   path_provider: ^2.1.0
 
   # تنزيل الملفات مباشرة على Web/Chrome
   universal_html: ^2.2.4
+
+  # إنشاء ملفات PDF
+  pdf: ^3.11.3
+
+  # معاينة وطباعة PDF + دعم الخطوط العربية
+  printing: ^5.14.3
+
+  # حفظ ملفات PDF وExcel
+  file_saver: ^0.3.1
 
 dev_dependencies:
   flutter_test:
