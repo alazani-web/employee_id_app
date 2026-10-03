@@ -208,17 +208,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildHeaderCard(),
+                  _buildHeaderCard(reportCount: reportCount),
                   const SizedBox(height: 12),
                   _buildTabs(),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   _buildStats(
                     employeeCount: employees.length,
                     visitCount: visits.length,
                     documentCount: _documentCount,
                     reportCount: reportCount,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   if (selectedTab == 0)
                     _buildEmployeesReport(employees)
                   else if (selectedTab == 1)
@@ -234,7 +234,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _buildHeaderCard() {
+  Widget _buildHeaderCard({required int reportCount}) {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
       decoration: BoxDecoration(
@@ -247,31 +247,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Row(
             children: [
               const Expanded(
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          'التقارير',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xff111827)),
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          'تصدير ومراجعة تقارير الموظفين والزيارات والتجديدات',
-                          textAlign: TextAlign.right,
-                          style: TextStyle(fontSize: 11, height: 1.3, color: Color(0xff6B7280)),
-                        ),
-                      ),
-                    ],
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'التقارير',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xff111827)),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'تصدير ومراجعة تقارير الموظفين والزيارات والتجديدات',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(fontSize: 11, height: 1.3, color: Color(0xff6B7280)),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 10),
@@ -296,6 +286,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   foreground: const Color(0xff16A34A),
                   background: const Color(0xffF0FDF4),
                   border: Colors.transparent,
+                  hasData: reportCount > 0,
                   onPressed: _exportExcel,
                 ),
               ),
@@ -307,6 +298,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   foreground: const Color(0xffDC2626),
                   background: const Color(0xffFEF2F2),
                   border: Colors.transparent,
+                  hasData: reportCount > 0,
                   onPressed: _exportPdf,
                 ),
               ),
@@ -323,6 +315,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     required Color foreground,
     required Color background,
     required Color border,
+    required bool hasData,
     required Future<void> Function() onPressed,
   }) {
     return Material(
@@ -330,6 +323,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(11),
         onTap: () async {
+          if (!hasData) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'لا يمكن إنشاء التقرير لعدم وجود بيانات',
+                  textAlign: TextAlign.right,
+                ),
+                duration: Duration(seconds: 3),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
           await onPressed();
         },
         child: Container(
@@ -373,7 +381,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               borderRadius: BorderRadius.circular(24),
               onTap: () => setState(() => selectedTab = index),
               child: Container(
-                height: 44,
+                height: 46,
                 decoration: BoxDecoration(
                   color: active ? primaryBlue : Colors.white,
                   borderRadius: BorderRadius.circular(24),
@@ -429,88 +437,43 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _statCard(
-  String title,
-  String value,
-  IconData icon,
-  Color color,
-  Color background,
-) {
-  return Container(
-    height: 68,
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-    decoration: BoxDecoration(
-      color: background,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(
-        color: const Color(0xffE5E7EB),
+  Widget _statCard(String title, String value, IconData icon, Color color, Color background) {
+    return Container(
+      height: 82,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xffE5E7EB)),
       ),
-    ),
-    child: Row(
-      // مهم: الأيقونة يسار والنص يمين
-      textDirection: TextDirection.ltr,
-      children: [
-        // الأيقونة في اليسار
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(10),
+      child: Row(
+        textDirection: TextDirection.ltr,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 21),
           ),
-          child: Icon(
-            icon,
-            color: color,
-            size: 18,
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 12, color: Color(0xff6B7280), fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(value, style: TextStyle(fontSize: 25, height: 1, color: color, fontWeight: FontWeight.w800)),
+              ],
+            ),
           ),
-        ),
-
-        const SizedBox(width: 8),
-
-        // الاسم والرقم في اليمين
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  title,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    height: 1.1,
-                    color: Color(0xff6B7280),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 2),
-
-              Align(
-                alignment: Alignment.centerRight,
-                child: Text(
-                  value,
-                  textAlign: TextAlign.right,
-                  style: TextStyle(
-                    fontSize: 22,
-                    height: 1,
-                    color: color,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _reportCard({required String title, required int count, required Widget child}) {
     return Container(
@@ -526,31 +489,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      title,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xff111827)),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      'عدد النتائج: $count',
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(fontSize: 12, color: Color(0xff6B7280)),
-                    ),
-                  ),
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xff111827))),
+                const SizedBox(height: 4),
+                Text('عدد النتائج: $count', style: const TextStyle(fontSize: 12, color: Color(0xff6B7280))),
+              ],
             ),
           ),
           child,
@@ -850,8 +795,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _exportExcel() async {
+    final rows = _currentExportRows();
+    if (rows.length <= 1) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'لا يمكن إنشاء التقرير لعدم وجود بيانات',
+            textAlign: TextAlign.right,
+          ),
+          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     try {
-      final rows = _currentExportRows();
       final workbook = excel_lib.Excel.createExcel();
       final sheet = workbook['التقرير'];
       sheet.isRTL = true;
@@ -884,8 +845,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Future<void> _exportPdf() async {
+    final rows = _currentExportRows();
+    if (rows.length <= 1) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'لا يمكن إنشاء التقرير لعدم وجود بيانات',
+            textAlign: TextAlign.right,
+          ),
+          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     try {
-      final rows = _currentExportRows();
       final arabicFont = await PdfGoogleFonts.notoSansArabicRegular();
       final arabicBold = await PdfGoogleFonts.notoSansArabicBold();
 

@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import 'activation_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String selectedPage;
@@ -30,10 +34,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   int notificationDays = 30;
 
-  TimeOfDay notificationTime = const TimeOfDay(
-    hour: 9,
-    minute: 0,
-  );
+  TimeOfDay? notificationTime;
+
+  String? _notificationSaveMessage;
+
+  // مفتاح لتحديد مكان نافذة اختيار الوقت رأسيًا بالنسبة لخانة الوقت.
+  final GlobalKey _notificationTimeKey = GlobalKey();
 
   final TextEditingController companyController =
       TextEditingController(text: "شركتي");
@@ -84,8 +90,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: Column(
             children: [
-              _buildPageHeader(),
-              const SizedBox(height: 14),
+              if (currentPage != "activation") ...[
+                _buildPageHeader(),
+                const SizedBox(height: 14),
+              ],
               _buildSelectedContent(),
             ],
           ),
@@ -100,37 +108,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildPageHeader() {
     String title = "إعدادات النظام";
-    IconData icon = Icons.settings_outlined;
+    IconData icon = LucideIcons.settings;
 
     switch (currentPage) {
       case "backup":
         title = "النسخ الاحتياطي";
-        icon = Icons.storage_outlined;
+        icon = LucideIcons.database;
         break;
 
       case "activation":
         title = "التفعيل";
-        icon = Icons.key_outlined;
+        icon = LucideIcons.keyRound;
         break;
 
       case "lock":
         title = "قفل التطبيق";
-        icon = Icons.shield_outlined;
+        icon = LucideIcons.shieldCheck;
         break;
 
       case "alerts":
         title = "ضبط الإشعارات";
-        icon = Icons.notifications_none;
+        icon = LucideIcons.bell;
         break;
 
       case "tasks":
         title = "المهام";
-        icon = Icons.assignment_outlined;
+        icon = LucideIcons.clipboardList;
         break;
 
       case "about":
         title = "نبذة عن التطبيق";
-        icon = Icons.info_outline;
+        icon = LucideIcons.info;
         break;
     }
 
@@ -171,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return _buildBackupView();
 
       case "activation":
-        return _buildActivationView();
+        return const ActivationScreen();
 
       case "lock":
         return _buildLockView();
@@ -701,14 +709,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             _buildSettingBox(
               title: "وقت الفحص اليومي",
-              trailing: TextButton(
-                onPressed: _selectNotificationTime,
-                child: Text(
-                  notificationTime.format(context),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xff2864D7),
-                    fontWeight: FontWeight.bold,
+              trailing: KeyedSubtree(
+                key: _notificationTimeKey,
+                child: TextButton(
+                  onPressed: _selectNotificationTime,
+                  child: Text(
+                    notificationTime == null
+                        ? 'اختر الوقت'
+                        : notificationTime!.format(context),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: notificationTime == null
+                          ? const Color(0xff64748B)
+                          : const Color(0xff2864D7),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -721,6 +736,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: Icons.save_outlined,
               onPressed: _saveNotificationSettings,
             ),
+
+            if (_notificationSaveMessage != null) ...[
+              const SizedBox(height: 8),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: Container(
+                  key: ValueKey(_notificationSaveMessage),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xffECFDF5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xffA7F3D0),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        size: 18,
+                        color: Color(0xff059669),
+                      ),
+                      const SizedBox(width: 7),
+                      Flexible(
+                        child: Text(
+                          _notificationSaveMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xff047857),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ],
       ),
@@ -1062,247 +1121,416 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ============================================================
 
   Future<void> _selectNotificationTime() async {
-    int selectedHour = notificationTime.hourOfPeriod == 0
-        ? 12
-        : notificationTime.hourOfPeriod;
-    int selectedMinute = notificationTime.minute;
-    bool selectedPm = notificationTime.period == DayPeriod.pm;
+    final hourController = TextEditingController();
+    final minuteController = TextEditingController();
+    final hourFocusNode = FocusNode();
+    final minuteFocusNode = FocusNode();
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black54,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            return Directionality(
-              textDirection: TextDirection.rtl,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(28),
+    if (notificationTime != null) {
+      final existingHour = notificationTime!.hourOfPeriod == 0
+          ? 12
+          : notificationTime!.hourOfPeriod;
+
+      hourController.text = existingHour.toString().padLeft(2, '0');
+      minuteController.text =
+          notificationTime!.minute.toString().padLeft(2, '0');
+    }
+
+    bool selectedPm = notificationTime?.period == DayPeriod.pm;
+
+    final screenSize = MediaQuery.of(context).size;
+    final popupWidth = (screenSize.width - 32).clamp(260.0, 360.0);
+    const popupHeight = 224.0;
+    final double top = ((screenSize.height - popupHeight) / 2)
+        .clamp(12.0, screenSize.height - popupHeight - 12.0);
+    final double left = ((screenSize.width - popupWidth) / 2)
+        .clamp(12.0, screenSize.width - popupWidth - 12.0);
+
+    try {
+      // مهم: لا نعدّل State الصفحة من داخل الـ Dialog.
+      // الـ Dialog يرجع TimeOfDay أولاً، وبعد إغلاقه فقط نحدّث الصفحة.
+      final selectedTime = await showGeneralDialog<TimeOfDay>(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: 'اختيار الوقت',
+        barrierColor: Colors.black38,
+        transitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (dialogContext, animation, secondaryAnimation) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Stack(
+              children: [
+                Positioned(
+                  top: top,
+                  left: left,
+                  width: popupWidth.toDouble(),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: StatefulBuilder(
+                      builder: (ctx, setModalState) {
+                        String? errorMessage;
+
+                        return StatefulBuilder(
+                          builder: (ctx, setErrorState) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (ctx.mounted && !hourFocusNode.hasFocus &&
+                                  !minuteFocusNode.hasFocus) {
+                                hourFocusNode.requestFocus();
+                              }
+                            });
+
+                            void focusMinutes() {
+                              if (ctx.mounted) {
+                                minuteFocusNode.requestFocus();
+                              }
+                            }
+
+                            return Container(
+                              padding: const EdgeInsets.fromLTRB(
+                                12,
+                                10,
+                                12,
+                                12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: const Color(0xffE2E8F0),
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x22000000),
+                                    blurRadius: 18,
+                                    offset: Offset(0, 7),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.schedule_rounded,
+                                        color: Color(0xff2563EB),
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Expanded(
+                                        child: Text(
+                                          'اختيار الوقت',
+                                          style: TextStyle(
+                                            color: Color(0xff111827),
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                      InkWell(
+                                        borderRadius: BorderRadius.circular(20),
+                                        onTap: () => Navigator.pop(dialogContext),
+                                        child: const Padding(
+                                          padding: EdgeInsets.all(3),
+                                          child: Icon(
+                                            Icons.close_rounded,
+                                            color: Color(0xff475569),
+                                            size: 19,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: _timeInputField(
+                                          controller: hourController,
+                                          focusNode: hourFocusNode,
+                                          label: 'الساعة',
+                                          hint: '00',
+                                          maxLength: 2,
+                                          compact: true,
+                                          textInputAction: TextInputAction.next,
+                                          onChanged: (value) {
+                                            if (value.length >= 2) {
+                                              focusMinutes();
+                                            }
+                                          },
+                                          onSubmitted: (_) => focusMinutes(),
+                                          onEditingComplete: focusMinutes,
+                                        ),
+                                      ),
+                                      const Padding(
+                                        padding: EdgeInsets.only(
+                                          left: 5,
+                                          right: 5,
+                                          top: 9,
+                                        ),
+                                        child: Text(
+                                          ':',
+                                          style: TextStyle(
+                                            fontSize: 21,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xff111827),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: _timeInputField(
+                                          controller: minuteController,
+                                          focusNode: minuteFocusNode,
+                                          label: 'الدقيقة',
+                                          hint: '00',
+                                          maxLength: 2,
+                                          compact: true,
+                                          textInputAction: TextInputAction.done,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 7),
+                                      _periodSelector(
+                                        selectedPm,
+                                        (value) {
+                                          setModalState(() {
+                                            selectedPm = value;
+                                          });
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  if (errorMessage != null) ...[
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      errorMessage!,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Color(0xffDC2626),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 11),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(dialogContext),
+                                          style: OutlinedButton.styleFrom(
+                                            minimumSize:
+                                                const Size.fromHeight(38),
+                                            padding: EdgeInsets.zero,
+                                            side: const BorderSide(
+                                              color: Color(0xffE2E8F0),
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'إلغاء',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xff374151),
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: ElevatedButton(
+                                          onPressed: () {
+                                            final hour = int.tryParse(
+                                              hourController.text.trim(),
+                                            );
+                                            final minute = int.tryParse(
+                                              minuteController.text.trim(),
+                                            );
+
+                                            if (hour == null ||
+                                                hour < 1 ||
+                                                hour > 12) {
+                                              setErrorState(() {
+                                                errorMessage =
+                                                    'أدخل الساعة من 1 إلى 12';
+                                              });
+                                              hourFocusNode.requestFocus();
+                                              return;
+                                            }
+
+                                            if (minute == null ||
+                                                minute < 0 ||
+                                                minute > 59) {
+                                              setErrorState(() {
+                                                errorMessage =
+                                                    'أدخل الدقيقة من 00 إلى 59';
+                                              });
+                                              minuteFocusNode.requestFocus();
+                                              return;
+                                            }
+
+                                            final normalizedHour = selectedPm
+                                                ? (hour == 12 ? 12 : hour + 12)
+                                                : (hour == 12 ? 0 : hour);
+
+                                            final result = TimeOfDay(
+                                              hour: normalizedHour,
+                                              minute: minute,
+                                            );
+
+                                            // أغلق الـ Dialog أولاً وأرجع الوقت.
+                                            // ممنوع استدعاء setState الخاص بالصفحة هنا.
+                                            Navigator.pop(dialogContext, result);
+                                          },
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                const Color(0xff2563EB),
+                                            foregroundColor: Colors.white,
+                                            elevation: 0,
+                                            minimumSize:
+                                                const Size.fromHeight(38),
+                                            padding: EdgeInsets.zero,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'حسنًا',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
                 ),
-                child: SafeArea(
-                  top: false,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 58,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: Color(0xffD1D5DB),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              color: Color(0xff111827),
-                            ),
-                          ),
-                          const Spacer(),
-                          const Icon(
-                            Icons.schedule_rounded,
-                            color: Color(0xff2563EB),
-                            size: 23,
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'اختيار الوقت',
-                            style: TextStyle(
-                              color: Color(0xff111827),
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _numberDropdown(
-                              'الساعة',
-                              selectedHour,
-                              1,
-                              12,
-                              (value) => setModalState(
-                                () => selectedHour = value,
-                              ),
-                            ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.only(top: 14),
-                            child: Text(
-                              ':',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xff111827),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: _numberDropdown(
-                              'الدقيقة',
-                              selectedMinute,
-                              0,
-                              59,
-                              (value) => setModalState(
-                                () => selectedMinute = value,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          _periodSelector(
-                            selectedPm,
-                            (value) => setModalState(
-                              () => selectedPm = value,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              style: OutlinedButton.styleFrom(
-                                minimumSize: const Size.fromHeight(50),
-                                side: const BorderSide(
-                                  color: Color(0xffE2E8F0),
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(13),
-                                ),
-                              ),
-                              child: const Text(
-                                'إلغاء',
-                                style: TextStyle(
-                                  color: Color(0xff374151),
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  final normalizedHour = selectedPm
-                                      ? (selectedHour == 12
-                                          ? 12
-                                          : selectedHour + 12)
-                                      : (selectedHour == 12
-                                          ? 0
-                                          : selectedHour);
+              ],
+            ),
+          );
+        },
+        transitionBuilder: (context, animation, secondaryAnimation, child) {
+          final curved = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          );
 
-                                  notificationTime = TimeOfDay(
-                                    hour: normalizedHour,
-                                    minute: selectedMinute,
-                                  );
-                                });
-                                Navigator.pop(ctx);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xff2563EB),
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                minimumSize: const Size.fromHeight(50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(13),
-                                ),
-                              ),
-                              child: const Text(
-                                'حسناً',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+          return FadeTransition(
+            opacity: curved,
+            child: ScaleTransition(
+              scale: Tween<double>(
+                begin: 0.96,
+                end: 1.0,
+              ).animate(curved),
+              alignment: Alignment.center,
+              child: child,
+            ),
+          );
+        },
+      );
+
+      // هنا فقط، بعد إغلاق نافذة الوقت، نحدّث State الصفحة.
+      if (selectedTime != null && mounted) {
+        setState(() {
+          notificationTime = selectedTime;
+        });
+      }
+    } finally {
+      hourController.dispose();
+      minuteController.dispose();
+      hourFocusNode.dispose();
+      minuteFocusNode.dispose();
+    }
   }
 
-  Widget _numberDropdown(
-    String label,
-    int value,
-    int min,
-    int max,
-    ValueChanged<int> onChanged,
-  ) {
+  Widget _timeInputField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required int maxLength,
+    bool compact = false,
+    FocusNode? focusNode,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onChanged,
+    VoidCallback? onEditingComplete,
+    ValueChanged<String>? onSubmitted,
+  }) {
     return Column(
       children: [
-        Container(
-          height: 62,
-          width: 112,
-          decoration: BoxDecoration(
-            color: const Color(0xffF8FAFC),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xffE2E8F0)),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<int>(
-              value: value,
-              isExpanded: true,
-              alignment: Alignment.center,
-              icon: const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: Color(0xff64748B),
+        SizedBox(
+          height: compact ? 42 : 56,
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            onChanged: onChanged,
+            onEditingComplete: onEditingComplete,
+            onSubmitted: onSubmitted,
+            textInputAction: textInputAction,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            maxLength: maxLength,
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: hint,
+              hintStyle: TextStyle(
+                color: const Color(0xffCBD5E1),
+                fontSize: compact ? 18 : 22,
+                fontWeight: FontWeight.w600,
               ),
-              items: List.generate(
-                max - min + 1,
-                (index) {
-                  final number = min + index;
-                  return DropdownMenuItem<int>(
-                    value: number,
-                    child: Center(
-                      child: Text(
-                        number.toString().padLeft(2, '0'),
-                        style: const TextStyle(
-                          fontSize: 27,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xff111827),
-                        ),
-                      ),
-                    ),
-                  );
-                },
+              filled: true,
+              fillColor: const Color(0xffF8FAFC),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: compact ? 3 : 7,
               ),
-              onChanged: (value) {
-                if (value != null) onChanged(value);
-              },
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xffE2E8F0),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xffE2E8F0),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xff2563EB),
+                  width: 1.5,
+                ),
+              ),
+            ),
+            style: TextStyle(
+              fontSize: compact ? 18 : 22,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xff111827),
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 3),
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xff64748B),
-            fontSize: 12,
+          style: TextStyle(
+            color: const Color(0xff64748B),
+            fontSize: compact ? 9 : 11,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1315,17 +1543,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ValueChanged<bool> onChanged,
   ) {
     return Container(
-      width: 68,
-      height: 62,
+      width: 48,
+      height: 42,
       decoration: BoxDecoration(
         color: const Color(0xffF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xffE2E8F0)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xffE2E8F0),
+        ),
       ),
       child: Column(
         children: [
           Expanded(
             child: InkWell(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(10),
+              ),
               onTap: () => onChanged(false),
               child: Container(
                 width: double.infinity,
@@ -1335,7 +1568,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ? const Color(0xff2563EB)
                       : Colors.transparent,
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(14),
+                    top: Radius.circular(10),
                   ),
                 ),
                 child: Text(
@@ -1345,15 +1578,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? Colors.white
                         : const Color(0xff111827),
                     fontWeight: FontWeight.w800,
-                    fontSize: 16,
+                    fontSize: 14,
                   ),
                 ),
               ),
             ),
           ),
-          Container(height: 1, color: const Color(0xffE2E8F0)),
+          Container(
+            height: 1,
+            color: const Color(0xffE2E8F0),
+          ),
           Expanded(
             child: InkWell(
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(10),
+              ),
               onTap: () => onChanged(true),
               child: Container(
                 width: double.infinity,
@@ -1363,7 +1602,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ? const Color(0xff2563EB)
                       : Colors.transparent,
                   borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(14),
+                    bottom: Radius.circular(10),
                   ),
                 ),
                 child: Text(
@@ -1373,7 +1612,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? Colors.white
                         : const Color(0xff111827),
                     fontWeight: FontWeight.w800,
-                    fontSize: 16,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -1385,9 +1624,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _saveNotificationSettings() {
-    _showMessage(
-      "تم حفظ إعدادات الإشعارات",
-    );
+    setState(() {
+      _notificationSaveMessage = "تم حفظ إعدادات الإشعارات";
+    });
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      if (_notificationSaveMessage == "تم حفظ إعدادات الإشعارات") {
+        setState(() {
+          _notificationSaveMessage = null;
+        });
+      }
+    });
   }
 
   void _saveLockSettings() {
