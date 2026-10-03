@@ -245,6 +245,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       child: Column(
         children: [
           Row(
+            textDirection: TextDirection.rtl,
             children: [
               const Expanded(
                 child: Column(
@@ -309,6 +310,43 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  void _showNoDataReportMessage() {
+    if (!mounted) return;
+
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (overlayContext) {
+        return Positioned(
+          right: 16,
+          top: 96,
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Material(
+              color: Colors.transparent,
+              child: _NoDataReportToast(
+                onClose: () {
+                  if (entry.mounted) {
+                    entry.remove();
+                  }
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(entry);
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (entry.mounted) {
+        entry.remove();
+      }
+    });
+  }
+
   Widget _exportButton({
     required String label,
     required IconData icon,
@@ -324,18 +362,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         borderRadius: BorderRadius.circular(11),
         onTap: () async {
           if (!hasData) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'لا يمكن إنشاء التقرير لعدم وجود بيانات',
-                  textAlign: TextAlign.right,
-                ),
-                duration: Duration(seconds: 3),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            _showNoDataReportMessage();
             return;
           }
           await onPressed();
@@ -347,6 +374,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             borderRadius: BorderRadius.circular(11),
           ),
           child: Row(
+            textDirection: TextDirection.rtl,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
@@ -388,6 +416,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   border: Border.all(color: active ? primaryBlue : const Color(0xffE5E7EB)),
                 ),
                 child: Row(
+                  textDirection: TextDirection.ltr,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(tabIcons[index], size: 19, color: active ? Colors.white : const Color(0xff4B5563)),
@@ -437,44 +466,91 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  Widget _statCard(String title, String value, IconData icon, Color color, Color background) {
-    return Container(
-      height: 82,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xffE5E7EB)),
+  Widget _statCard(
+  String title,
+  String value,
+  IconData icon,
+  Color color,
+  Color background,
+) {
+  return Container(
+    height: 55,
+    padding: const EdgeInsets.symmetric(
+      horizontal: 10,
+      vertical: 8,
+    ),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(18),
+      border: Border.all(
+        color: const Color(0xffE5E7EB),
       ),
-      child: Row(
-        textDirection: TextDirection.ltr,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 21),
+    ),
+        child: Row(
+      // مهم: الأيقونة يسار والنص يمين
+      textDirection: TextDirection.ltr,
+      children: [
+        // الأيقونة في اليسار
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
           ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 12, color: Color(0xff6B7280), fontWeight: FontWeight.w600)),
-                const SizedBox(height: 2),
-                Text(value, style: TextStyle(fontSize: 25, height: 1, color: color, fontWeight: FontWeight.w800)),
-              ],
-            ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 18,
           ),
-        ],
-      ),
-    );
-  }
+        ),
 
+        const SizedBox(width: 8),
+
+        // الاسم والرقم في اليمين
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  title,
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.1,
+                    color: Color(0xff6B7280),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 2),
+
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  value,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 22,
+                    height: 1,
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
   Widget _reportCard({required String title, required int count, required Widget child}) {
     return Container(
       width: double.infinity,
@@ -490,7 +566,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              textDirection: TextDirection.rtl,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xff111827))),
                 const SizedBox(height: 4),
@@ -798,17 +875,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final rows = _currentExportRows();
     if (rows.length <= 1) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'لا يمكن إنشاء التقرير لعدم وجود بيانات',
-            textAlign: TextAlign.right,
-          ),
-          duration: Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showNoDataReportMessage();
       return;
     }
 
@@ -833,9 +900,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تصدير تقرير Excel بنجاح')),
-      );
+      _showExportSuccessMessage('Excel');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -844,21 +909,133 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
   }
 
+  void _showExportSuccessMessage(String format) {
+    if (!mounted) return;
+
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+
+    entry = OverlayEntry(
+      builder: (overlayContext) {
+        return Positioned(
+          right: 16,
+          top: 96,
+          child: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Material(
+              color: Colors.transparent,
+              child: TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                tween: Tween(begin: 0.0, end: 1.0),
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value,
+                    child: Transform.translate(
+                      offset: Offset(0, -8 * (1 - value)),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Container(
+                  width: 350,
+                  constraints: const BoxConstraints(maxWidth: 350),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFD1FAE5)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x22000000),
+                        blurRadius: 20,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFECFDF5),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          LucideIcons.circleCheck,
+                          color: Color(0xFF16A34A),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'تم التصدير بنجاح',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                color: Color(0xFF111827),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'تم تجهيز تقرير $format للتنزيل بنجاح',
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(
+                                color: Color(0xFF6B7280),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            if (entry.mounted) entry.remove();
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: const Padding(
+                            padding: EdgeInsets.all(7),
+                            child: Icon(
+                              LucideIcons.x,
+                              color: Color(0xFF6B7280),
+                              size: 19,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(entry);
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (entry.mounted) entry.remove();
+    });
+  }
+
   Future<void> _exportPdf() async {
     final rows = _currentExportRows();
     if (rows.length <= 1) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'لا يمكن إنشاء التقرير لعدم وجود بيانات',
-            textAlign: TextAlign.right,
-          ),
-          duration: Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showNoDataReportMessage();
       return;
     }
 
@@ -920,14 +1097,117 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تصدير تقرير PDF بنجاح')),
-      );
+      _showExportSuccessMessage('PDF');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('تعذر تصدير PDF: $e')),
       );
     }
+  }
+}
+
+class _NoDataReportToast extends StatelessWidget {
+  final VoidCallback onClose;
+
+  const _NoDataReportToast({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, -8 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: Container(
+        width: 350,
+        constraints: const BoxConstraints(maxWidth: 320),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x22000000),
+              blurRadius: 20,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  LucideIcons.fileWarning,
+                  color: Color(0xFFDC2626),
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'لا يمكن إنشاء التقرير',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: Color(0xFF111827),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'لا توجد بيانات متاحة للتصدير حاليًا',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: Color(0xFF6B7280),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onClose,
+                  borderRadius: BorderRadius.circular(20),
+                  child: const Padding(
+                    padding: EdgeInsets.all(7),
+                    child: Icon(
+                      LucideIcons.x,
+                      color: Color(0xFF6B7280),
+                      size: 19,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
