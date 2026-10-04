@@ -6,7 +6,7 @@ class BackupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
