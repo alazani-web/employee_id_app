@@ -28,6 +28,11 @@ class _AppState extends State<App> {
 
   String currentPage = "home";
 
+  // مفتاح الـ Navigator الداخلي الخاص بالصفحات.
+  // يبقى ثابتًا حتى لا يتم إنشاء Navigator جديد عند تغيير الصفحة.
+  final GlobalKey<NavigatorState> pageNavigatorKey =
+      GlobalKey<NavigatorState>();
+
 
   // =====================================================
   // الصفحة الحالية
@@ -72,8 +77,22 @@ class _AppState extends State<App> {
   // =====================================================
 
   void navigate(String page) {
+    // مهم: لا نعتمد على currentPage لمعرفة الصفحة المعروضة فعليًا،
+    // لأن الصفحة قد تكون فُتحت من داخل HomeScreen باستخدام Navigator.push.
+    // لذلك يجب تنفيذ الانتقال في كل ضغطة على الشريط السفلي.
     setState(() {
       currentPage = page;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || pageNavigatorKey.currentState == null) return;
+
+      pageNavigatorKey.currentState!.pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => getCurrentPage(),
+        ),
+        (route) => false,
+      );
     });
   }
 
@@ -147,7 +166,12 @@ class _AppState extends State<App> {
 
             // الصفحة
             Expanded(
-              child: getCurrentPage(),
+              child: Navigator(
+                key: pageNavigatorKey,
+                onGenerateRoute: (_) => MaterialPageRoute(
+                  builder: (_) => const HomeScreen(),
+                ),
+              ),
             ),
 
             // الشريط السفلي

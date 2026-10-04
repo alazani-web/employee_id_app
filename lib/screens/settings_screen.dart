@@ -278,7 +278,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           _buildBlueButton(
             title: "حفظ الإعدادات",
-            icon: Icons.save_outlined,
+            icon: LucideIcons.save,
             onPressed: () {
               _showMessage("تم حفظ الإعدادات");
             },
@@ -299,7 +299,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _buildSectionTitle(
             "النسخ الاحتياطي والاستعادة",
-            Icons.storage_outlined,
+            LucideIcons.database,
           ),
 
           const SizedBox(height: 8),
@@ -317,7 +317,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           _buildActionButton(
             title: "إنشاء نسخة احتياطية",
-            icon: Icons.download_outlined,
+            icon: LucideIcons.download,
             color: const Color(0xff2864D7),
             onPressed: () {
               _showMessage("تم طلب إنشاء نسخة احتياطية");
@@ -328,7 +328,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           _buildActionButton(
             title: "استعادة نسخة احتياطية",
-            icon: Icons.upload_outlined,
+            icon: LucideIcons.upload,
             color: const Color(0xff374151),
             onPressed: () {
               _showMessage("تم اختيار استعادة النسخة الاحتياطية");
@@ -380,7 +380,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _buildSectionTitle(
             "التفعيل والاشتراك",
-            Icons.key_outlined,
+            LucideIcons.keyRound,
           ),
 
           const SizedBox(height: 8),
@@ -405,7 +405,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Row(
               children: [
                 const Icon(
-                  Icons.verified_outlined,
+                  LucideIcons.badgeCheck,
                   color: Color(0xff3D9850),
                   size: 25,
                 ),
@@ -451,7 +451,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           _buildBlueButton(
             title: "إدارة الاشتراك",
-            icon: Icons.manage_accounts_outlined,
+            icon: LucideIcons.userCog,
             onPressed: () {
               _showMessage("إدارة الاشتراك");
             },
@@ -472,7 +472,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _buildSectionTitle(
             "قفل التطبيق",
-            Icons.shield_outlined,
+            LucideIcons.shield,
           ),
 
           const SizedBox(height: 7),
@@ -577,7 +577,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             _buildBlueButton(
               title: "حفظ إعدادات القفل",
-              icon: Icons.save_outlined,
+              icon: LucideIcons.save,
               onPressed: _saveLockSettings,
             ),
           ],
@@ -597,7 +597,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _buildSectionTitle(
             "ضبط الإشعارات",
-            Icons.notifications_none,
+            LucideIcons.bell,
           ),
 
           const SizedBox(height: 7),
@@ -733,7 +733,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             _buildBlueButton(
               title: "حفظ إعدادات الإشعارات",
-              icon: Icons.save_outlined,
+              icon: LucideIcons.save,
               onPressed: _saveNotificationSettings,
             ),
 
@@ -759,7 +759,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(
-                        Icons.check_circle_rounded,
+                        LucideIcons.checkCircle,
                         size: 18,
                         color: Color(0xff059669),
                       ),
@@ -797,7 +797,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _buildSectionTitle(
             "إدارة المهام",
-            Icons.assignment_outlined,
+            LucideIcons.clipboardList,
           ),
 
           const SizedBox(height: 7),
@@ -814,7 +814,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 18),
 
           _buildEmptyState(
-            icon: Icons.task_alt_outlined,
+            icon: LucideIcons.listChecks,
             title: "لا توجد مهام حالياً",
             subtitle: "ستظهر المهام والمتابعات هنا.",
           ),
@@ -834,7 +834,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           _buildSectionTitle(
             "نبذة عن التطبيق",
-            Icons.info_outline,
+            LucideIcons.info,
           ),
 
           const SizedBox(height: 16),
@@ -1212,7 +1212,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   Row(
                                     children: [
                                       const Icon(
-                                        Icons.schedule_rounded,
+                                        LucideIcons.clock,
                                         color: Color(0xff2563EB),
                                         size: 18,
                                       ),
@@ -1233,7 +1233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         child: const Padding(
                                           padding: EdgeInsets.all(3),
                                           child: Icon(
-                                            Icons.close_rounded,
+                                            LucideIcons.x,
                                             color: Color(0xff475569),
                                             size: 19,
                                           ),

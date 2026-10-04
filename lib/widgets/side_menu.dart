@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class SideMenu extends StatelessWidget {
   final Function(String) onNavigate;
@@ -46,7 +47,7 @@ class SideMenu extends StatelessWidget {
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                       icon: const Icon(
-                        Icons.close,
+                        LucideIcons.x,
                         size: 20,
                         color: Color(0xff6B7280),
                       ),
@@ -77,49 +78,49 @@ class SideMenu extends StatelessWidget {
                   children: [
                     menuItem(
                       context: context,
-                      icon: Icons.settings_outlined,
+                      icon: LucideIcons.settings,
                       title: "الإعدادات",
                       subtitle: "الإعدادات العامة",
                       page: "settings",
                     ),
                     menuItem(
                       context: context,
-                      icon: Icons.storage_outlined,
+                      icon: LucideIcons.database,
                       title: "النسخ الاحتياطي",
                       subtitle: "تصدير واستعادة البيانات",
                       page: "backup",
                     ),
                     menuItem(
                       context: context,
-                      icon: Icons.vpn_key_outlined,
+                      icon: LucideIcons.keyRound,
                       title: "التفعيل",
                       subtitle: "إدارة الاشتراك والأجهزة",
                       page: "activation",
                     ),
                     menuItem(
                       context: context,
-                      icon: Icons.shield_outlined,
+                      icon: LucideIcons.shield,
                       title: "قفل التطبيق",
                       subtitle: "رقم سري وبصمة الوجه",
                       page: "lock",
                     ),
                     menuItem(
                       context: context,
-                      icon: Icons.notifications_none_outlined,
+                      icon: LucideIcons.bell,
                       title: "ضبط الإشعارات",
                       subtitle: "مواعيد وتنبيهات النظام",
                       page: "alerts",
                     ),
                     menuItem(
                       context: context,
-                      icon: Icons.assignment_outlined,
+                      icon: LucideIcons.clipboardList,
                       title: "المهام",
                       subtitle: "إدارة المهام والمتابعات",
                       page: "tasks",
                     ),
                     menuItem(
                       context: context,
-                      icon: Icons.info_outline,
+                      icon: LucideIcons.info,
                       title: "نبذة عن التطبيق",
                       subtitle: "معلومات النظام والإصدار",
                       page: "about",

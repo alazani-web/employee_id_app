@@ -14,6 +14,7 @@ import '../models/visit.dart';
 import '../providers/visit_provider.dart';
 import '../widgets/app_date_picker.dart';
 import '../widgets/confirm_delete_dialog.dart';
+import '../utils/family_visit_calculator.dart';
 
 class VisitsScreen extends StatefulWidget {
   const VisitsScreen({super.key});
@@ -1514,7 +1515,12 @@ class _VisitsScreenState extends State<VisitsScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-            final newDate = _calculateRenewal(visit.expiryDate, months);
+            final newDate = FamilyVisitCalculator.formatDate(
+              FamilyVisitCalculator.calculateNextRenewal(
+                expiryDate: _parseDate(visit.expiryDate) ?? DateTime.now(),
+                renewalMonths: months,
+              ),
+            );
 
             return Directionality(
               textDirection: TextDirection.rtl,
@@ -1767,16 +1773,6 @@ class _VisitsScreenState extends State<VisitsScreen> {
         ),
       ],
     );
-  }
-
-  String _calculateRenewal(String current, int months) {
-    final start = _parseDate(current) ?? DateTime.now();
-    int month = start.month + months;
-    int year = start.year + ((month - 1) ~/ 12);
-    month = ((month - 1) % 12) + 1;
-    final lastDay = DateTime(year, month + 1, 0).day;
-    final day = start.day > lastDay ? lastDay : start.day;
-    return _date(DateTime(year, month, day));
   }
 
   void _showLogs(BuildContext context, Visit visit) {

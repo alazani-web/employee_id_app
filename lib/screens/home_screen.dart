@@ -7,6 +7,11 @@ import 'package:provider/provider.dart';
 import '../providers/employee_provider.dart';
 import '../providers/visit_provider.dart';
 import '../providers/alert_provider.dart'; // استيراد مزود التنبيهات
+import 'employees_screen.dart';
+import 'visits_screen.dart';
+import 'documents_screen.dart';
+import 'alerts_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,6 +21,40 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const List<String> _weekdays = [
+    '',
+    'الاثنين',
+    'الثلاثاء',
+    'الأربعاء',
+    'الخميس',
+    'الجمعة',
+    'السبت',
+    'الأحد',
+  ];
+
+  static const List<String> _months = [
+    '',
+    'يناير',
+    'فبراير',
+    'مارس',
+    'أبريل',
+    'مايو',
+    'يونيو',
+    'يوليو',
+    'أغسطس',
+    'سبتمبر',
+    'أكتوبر',
+    'نوفمبر',
+    'ديسمبر',
+  ];
+
+  String get _currentWeekday => _weekdays[DateTime.now().weekday];
+
+  String get _currentDate {
+    final now = DateTime.now();
+    return '${now.day} ${_months[now.month]} ${now.year}';
+  }
+
   static const String _documentsStorageKey = 'employee_id_app_documents_v2';
   int _documentCount = 0;
 
@@ -107,10 +146,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: const Color(0xffEFF4FF),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: const Column(
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(
+                          const Text(
                             "اليوم",
                             style: TextStyle(
                               color: Color(0xff2864D7),
@@ -119,15 +158,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           Text(
-                            "الأربعاء",
-                            style: TextStyle(
+                            _currentWeekday,
+                            style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
-                            "30 سبتمبر 2026",
-                            style: TextStyle(
+                            _currentDate,
+                            style: const TextStyle(
                               fontSize: 9,
                               color: Colors.grey,
                               fontWeight: FontWeight.bold,
@@ -156,6 +195,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: "assets/icons/users.svg",
                     color: const Color(0xff2864D7),
                     background: const Color(0xffEFF4FF),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const EmployeesScreen(),
+                      ),
+                    ),
                   ),
                   StatCard(
                     title: "الوثائق",
@@ -163,6 +208,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: "assets/icons/folder_open.svg",
                     color: const Color(0xff2864D7),
                     background: const Color(0xffEFF4FF),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const DocumentsScreen(),
+                      ),
+                    ),
                   ),
                   StatCard(
                     title: "الزيارات",
@@ -170,6 +221,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: "assets/icons/calendar.svg",
                     color: const Color(0xff3D9850),
                     background: const Color(0xffEFFAF1),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const VisitsScreen(),
+                      ),
+                    ),
                   ),
                   StatCard(
                     title: "التنبيهات",
@@ -177,26 +234,52 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: "assets/icons/notifications.svg",
                     color: const Color(0xffD8792B),
                     background: const Color(0xfffff5ed),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AlertsScreen(),
+                      ),
+                    ),
                   ),
                 ],
               ),
 
               const SizedBox(height: 12),
 
-              const InfoCard(
+              InfoCard(
                 title: "حالة الترخيص",
                 icon: "assets/icons/badge_check.svg",
                 subtitle: "مفتاح التفعيل: مفعل\nالأيام المتبقية: 12512 يوم",
                 button: "إدارة الترخيص",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SettingsScreen(
+                        selectedPage: "activation",
+                      ),
+                    ),
+                  );
+                },
               ),
 
               const SizedBox(height: 12),
 
-              const InfoCard(
+              InfoCard(
                 title: "النسخ الاحتياطي",
                 icon: "assets/icons/database.svg",
                 subtitle: "آخر نسخة احتياطية\nلا توجد نسخة محفوظة",
                 button: "إنشاء نسخة احتياطية",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const SettingsScreen(
+                        selectedPage: "backup",
+                      ),
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -212,6 +295,7 @@ class StatCard extends StatelessWidget {
   final String icon;
   final Color color;
   final Color background;
+  final VoidCallback? onTap;
 
   const StatCard({
     super.key,
@@ -220,13 +304,17 @@ class StatCard extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.background,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 55,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        height: 55,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(14),
@@ -274,6 +362,7 @@ class StatCard extends StatelessWidget {
           ),
         ],
       ),
+      ),
     );
   }
 }
@@ -283,6 +372,7 @@ class InfoCard extends StatelessWidget {
   final String subtitle;
   final String button;
   final String icon;
+  final VoidCallback? onTap;
 
   const InfoCard({
     super.key,
@@ -290,6 +380,7 @@ class InfoCard extends StatelessWidget {
     required this.subtitle,
     required this.button,
     required this.icon,
+    this.onTap,
   });
 
   @override
@@ -346,7 +437,7 @@ class InfoCard extends StatelessWidget {
           SizedBox(
             height: 40,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: onTap,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xff2864D7),
                 shape: RoundedRectangleBorder(

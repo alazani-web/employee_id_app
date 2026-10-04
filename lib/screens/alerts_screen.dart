@@ -10,6 +10,8 @@ import '../providers/visit_provider.dart';
 import '../models/employee.dart';
 import '../models/visit.dart';
 import '../widgets/app_date_picker.dart';
+import '../utils/renewal_calculator.dart';
+import '../utils/family_visit_calculator.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -441,26 +443,33 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   Widget summaryStatCard(String title, String count, IconData icon, Color color) {
     return Container(
-      height: 112,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(15),
         border: Border.all(color: const Color(0xffE5E7EB)),
       ),
       child: Row(
-        textDirection: TextDirection.rtl,
+        textDirection: TextDirection.ltr,
         children: [
+          // الأيقونة في اليسار
           Container(
-            width: 58,
-            height: 58,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(11),
             ),
-            child: Icon(icon, color: Colors.white, size: 30),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 8),
+
+          // العنوان والعدد في اليمين
           Expanded(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -469,17 +478,21 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 Text(
                   title,
                   textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 11,
                     color: Color(0xff6B7280),
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 1),
                 Text(
                   count,
+                  textAlign: TextAlign.right,
                   style: TextStyle(
-                    fontSize: 27,
+                    fontSize: 21,
+                    height: 1,
                     fontWeight: FontWeight.w800,
                     color: color,
                   ),
@@ -666,18 +679,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
     );
   }
 
-  DateTime _calculateEmployeeRenewalDate(DateTime startDate, int monthsToAdd) {
-    DateTime calculatedDate = DateTime(
-      startDate.year + (monthsToAdd ~/ 12),
-      startDate.month + (monthsToAdd % 12),
-      startDate.day,
-    );
-    if (calculatedDate.month > (startDate.month + (monthsToAdd % 12)) % 12) {
-      calculatedDate = DateTime(calculatedDate.year, calculatedDate.month, 0);
-    }
-    return calculatedDate.subtract(const Duration(days: 1));
-  }
-
   String _dateFromDateTime(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
@@ -689,7 +690,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           final current = DateTime.tryParse(emp.expiryDate) ?? DateTime.now();
-          final newDate = _calculateEmployeeRenewalDate(current, selectedMonths);
+          final newDate = RenewalCalculator.calculateRenewalDate(
+            expiryDate: current,
+            renewalMonths: selectedMonths,
+          );
           final formatted = _dateFromDateTime(newDate);
           return Directionality(
             textDirection: TextDirection.rtl,
@@ -745,23 +749,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
     notesController.dispose();
   }
 
-  DateTime _calculateVisitRenewal(String current, int months) {
-    final parsed = _parseDate(current);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final parsedDay = parsed == null
-        ? today
-        : DateTime(parsed.year, parsed.month, parsed.day);
-    final start = parsedDay.isBefore(today) ? today : parsedDay;
-    final rawTarget = DateTime(start.year, start.month + months, start.day);
-    // إذا اصطدم اليوم بنهاية شهر أقصر، نستخدم آخر يوم في الشهر الهدف.
-    final monthAfter = DateTime(start.year, start.month + months + 1, 0);
-    final safeTarget = rawTarget.month == monthAfter.month
-        ? rawTarget
-        : monthAfter;
-    return safeTarget.subtract(const Duration(days: 1));
-  }
-
   Future<void> _showVisitOnlyRenewDialog(BuildContext context, Visit visit) async {
     int months = 3;
 
@@ -772,7 +759,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-            final newDate = _calculateVisitRenewal(visit.expiryDate, months);
+            final newDate = FamilyVisitCalculator.calculateNextRenewal(
+              expiryDate: _parseDate(visit.expiryDate) ?? DateTime.now(),
+              renewalMonths: months,
+            );
             return Directionality(
               textDirection: TextDirection.rtl,
               child: Dialog(
@@ -927,9 +917,12 @@ class _AlertsScreenState extends State<AlertsScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-            final newInsuranceDate = _calculateInsuranceRenewal(
-              visit.insuranceExpiryDate,
-              months,
+            final insuranceExpiry = _parseDate(visit.insuranceExpiryDate) ?? DateTime.now();
+            final newInsuranceDate = FamilyVisitCalculator.formatDate(
+              FamilyVisitCalculator.calculateNextRenewal(
+                expiryDate: insuranceExpiry,
+                renewalMonths: months,
+              ),
             );
 
             return Directionality(
@@ -1184,20 +1177,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
     );
 
     insuranceController.dispose();
-  }
-
-  String _calculateInsuranceRenewal(String current, int months) {
-    final parsed = _parseDate(current);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final start = parsed == null || parsed.isBefore(today) ? today : parsed;
-
-    int month = start.month + months;
-    int year = start.year + ((month - 1) ~/ 12);
-    month = ((month - 1) % 12) + 1;
-    final lastDay = DateTime(year, month + 1, 0).day;
-    final day = start.day > lastDay ? lastDay : start.day;
-    return _dateFromDateTime(DateTime(year, month, day));
   }
 
   Future<void> _showDocumentRenewDialog(BuildContext context, Map<String, String> document) async {

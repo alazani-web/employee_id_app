@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:excel/excel.dart' as excel_lib;
 import '../providers/employee_provider.dart';
 import '../models/employee.dart';
+import '../utils/renewal_calculator.dart';
 
 class EmployeesScreen extends StatefulWidget {
   const EmployeesScreen({super.key});
@@ -71,19 +72,14 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     return {'status': 'سارية', 'daysLeft': difference};
   }
 
-  // دالة حساب تاريخ التجديد حسب نظام الجوازات السعودية (إضافة شهور مع الخصم يوماً واحداً)
+  // حساب تاريخ تجديد هوية الموظف من الحاسبة الموحدة.
+  // هذا التعديل خاص بتجديد هويات الموظفين فقط.
+  // الزيارات العائلية لها حاسبتها المستقلة.
   DateTime calculateSaudiRenewalDate(DateTime startDate, int monthsToAdd) {
-    DateTime calculatedDate = DateTime(
-      startDate.year + (monthsToAdd ~/ 12),
-      startDate.month + (monthsToAdd % 12),
-      startDate.day,
+    return RenewalCalculator.calculateRenewalDate(
+      expiryDate: startDate,
+      renewalMonths: monthsToAdd,
     );
-
-    if (calculatedDate.month > (startDate.month + (monthsToAdd % 12)) % 12) {
-      calculatedDate = DateTime(calculatedDate.year, calculatedDate.month, 0);
-    }
-
-    return calculatedDate.subtract(const Duration(days: 1));
   }
 
   Future<String?> _showCustomDatePicker(BuildContext context, {DateTime? initialDate}) async {
