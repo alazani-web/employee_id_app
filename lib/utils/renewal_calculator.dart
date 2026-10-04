@@ -14,86 +14,54 @@
 class RenewalCalculator {
   /// حساب تاريخ التجديد القادم للموظف.
   ///
-  /// [expiryDate] تاريخ بداية/انتهاء الفترة التي سيتم احتساب التجديد منها.
+  /// وفق طريقة الاحتساب المرسلة:
+  /// 3 أشهر = 90 يوم
+  /// 6 أشهر = 178 يوم
+  /// 12 شهر = 355 يوم
   ///
-  /// [renewalMonths] مدة التجديد:
-  /// 3 أو 6 أو 9 أو 12 شهر.
-  ///
-  /// يتم تطبيق تصحيح يومين لمطابقة احتساب تاريخ أبشر المستخدم
-  /// في النظام الحالي.
+  /// ملاحظة: 9 أشهر غير موجودة صراحة في المرجع المرسل،
+  /// وتم اعتماد 267 يوم كامتداد لدورة 3 أشهر.
   static DateTime calculateRenewalDate({
     required DateTime expiryDate,
     required int renewalMonths,
   }) {
-    if (![3, 6, 9, 12].contains(renewalMonths)) {
-      throw ArgumentError(
-        'مدة تجديد الموظف يجب أن تكون 3 أو 6 أو 9 أو 12 شهرًا.',
-      );
-    }
-
-    final int totalMonths =
-        expiryDate.year * 12 +
-        (expiryDate.month - 1) +
-        renewalMonths;
-
-    final int targetYear = totalMonths ~/ 12;
-    final int targetMonth = (totalMonths % 12) + 1;
-
-    // آخر يوم في الشهر المستهدف.
-    final int lastDayOfTargetMonth =
-        DateTime(targetYear, targetMonth + 1, 0).day;
-
-    // المحافظة على يوم البداية قدر الإمكان.
-    // إذا كان اليوم غير موجود في الشهر المستهدف،
-    // يتم استخدام آخر يوم في ذلك الشهر.
-    final int targetDay =
-        expiryDate.day > lastDayOfTargetMonth
-            ? lastDayOfTargetMonth
-            : expiryDate.day;
-
-    final DateTime calculatedDate = DateTime(
-      targetYear,
-      targetMonth,
-      targetDay,
-    );
-
-    // تصحيح الفرق الحالي مع تاريخ أبشر.
-    return calculatedDate.subtract(
-      const Duration(days: 2),
-    );
+    final int renewalDays = _renewalDays(renewalMonths);
+    return expiryDate.add(Duration(days: renewalDays));
   }
 
-  /// استخراج مدة التجديد من النص.
-  ///
-  /// أمثلة:
-  /// "3 أشهر"  -> 3
-  /// "6 أشهر"  -> 6
-  /// "9 أشهر"  -> 9
-  /// "12 شهر"  -> 12
-  ///
-  /// إذا لم يتم التعرف على المدة، يتم إرجاع 3 أشهر
-  /// كقيمة افتراضية للموظفين.
+  static int _renewalDays(int renewalMonths) {
+    switch (renewalMonths) {
+      case 3:
+        return 90;
+      case 6:
+        return 178;
+      case 9:
+        return 206;
+      case 12:
+        return 355;
+      default:
+        throw ArgumentError(
+          'مدة تجديد الموظف يجب أن تكون 3 أو 6 أو 9 أو 12 شهرًا.',
+        );
+    }
+  }
+
   static int getRenewalMonths(String? renewalPeriod) {
-    if (renewalPeriod == null ||
-        renewalPeriod.trim().isEmpty) {
+    if (renewalPeriod == null || renewalPeriod.trim().isEmpty) {
       return 3;
     }
 
-    final String value =
-        renewalPeriod.trim().toLowerCase();
+    final String value = renewalPeriod.trim().toLowerCase();
 
     if (value.contains('12')) {
       return 12;
     }
-
     if (value.contains('9')) {
       return 9;
     }
-
     if (value.contains('6')) {
       return 6;
     }
-
     if (value.contains('3')) {
       return 3;
     }
@@ -101,17 +69,10 @@ class RenewalCalculator {
     return 3;
   }
 
-  /// تنسيق التاريخ بصيغة:
-  /// يوم/شهر/سنة
   static String formatDate(DateTime date) {
-    final String day =
-        date.day.toString().padLeft(2, '0');
-
-    final String month =
-        date.month.toString().padLeft(2, '0');
-
-    final String year =
-        date.year.toString();
+    final String day = date.day.toString().padLeft(2, '0');
+    final String month = date.month.toString().padLeft(2, '0');
+    final String year = date.year.toString();
 
     return '$day/$month/$year';
   }

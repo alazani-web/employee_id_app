@@ -12,98 +12,47 @@
 class FamilyVisitCalculator {
   /// حساب تاريخ التجديد القادم للزيارة العائلية.
   ///
-  /// [expiryDate] تاريخ انتهاء/بداية فترة الزيارة.
-  ///
-  /// [renewalMonths]:
-  /// 1 = شهر واحد
-  /// 3 = ثلاثة أشهر
+  /// يتم الاحتساب بالأيام:
+  /// شهر واحد = 30 يوم
+  /// 3 أشهر = 90 يوم
   static DateTime calculateNextRenewal({
     required DateTime expiryDate,
     int renewalMonths = 1,
     DateTime? fromDate,
   }) {
-    if (renewalMonths != 1 && renewalMonths != 3) {
-      throw ArgumentError(
-        'مدة تجديد الزيارة العائلية يجب أن تكون 1 أو 3 أشهر.',
-      );
-    }
-
+    final int renewalDays = _renewalDays(renewalMonths);
     final DateTime today = fromDate ?? DateTime.now();
 
-    DateTime renewalDate = _addMonths(
-      expiryDate,
-      renewalMonths,
-    );
+    DateTime renewalDate =
+        expiryDate.add(Duration(days: renewalDays));
 
-    // إذا كان موعد التجديد قد مضى،
-    // ننتقل إلى موعد التجديد القادم حسب نفس دورة التجديد.
     while (!renewalDate.isAfter(today)) {
-      renewalDate = _addMonths(
-        renewalDate,
-        renewalMonths,
-      );
+      renewalDate =
+          renewalDate.add(Duration(days: renewalDays));
     }
 
     return renewalDate;
   }
 
-  /// إضافة عدد من الأشهر إلى التاريخ.
-  ///
-  /// يتم التعامل مع الأشهر التي لا تحتوي على نفس رقم اليوم.
-  ///
-  /// مثال:
-  /// 31 يناير + شهر
-  /// = آخر يوم من فبراير.
-  static DateTime _addMonths(
-    DateTime date,
-    int months,
-  ) {
-    final int totalMonths =
-        date.year * 12 +
-        (date.month - 1) +
-        months;
-
-    final int newYear = totalMonths ~/ 12;
-    final int newMonth = (totalMonths % 12) + 1;
-
-    // آخر يوم في الشهر الجديد.
-    final int lastDayOfMonth =
-        DateTime(newYear, newMonth + 1, 0).day;
-
-    // الحفاظ على رقم اليوم قدر الإمكان.
-    final int newDay =
-        date.day > lastDayOfMonth
-            ? lastDayOfMonth
-            : date.day;
-
-    return DateTime(
-      newYear,
-      newMonth,
-      newDay,
-      date.hour,
-      date.minute,
-      date.second,
-      date.millisecond,
-      date.microsecond,
-    );
+  static int _renewalDays(int renewalMonths) {
+    switch (renewalMonths) {
+      case 1:
+        return 30;
+      case 3:
+        return 90;
+      default:
+        throw ArgumentError(
+          'مدة تجديد الزيارة العائلية يجب أن تكون 1 أو 3 أشهر.',
+        );
+    }
   }
 
-  /// تحويل مدة التجديد من النص إلى عدد الأشهر.
-  ///
-  /// أمثلة:
-  /// "شهر"       -> 1
-  /// "شهر واحد"  -> 1
-  /// "1 شهر"     -> 1
-  /// "3 أشهر"    -> 3
-  /// "3 شهر"     -> 3
   static int getRenewalMonths(String? renewalPeriod) {
-    if (renewalPeriod == null ||
-        renewalPeriod.trim().isEmpty) {
+    if (renewalPeriod == null || renewalPeriod.trim().isEmpty) {
       return 1;
     }
 
-    final String value =
-        renewalPeriod.trim().toLowerCase();
+    final String value = renewalPeriod.trim().toLowerCase();
 
     if (value.contains('3')) {
       return 3;
@@ -112,17 +61,10 @@ class FamilyVisitCalculator {
     return 1;
   }
 
-  /// تنسيق التاريخ بصيغة:
-  /// يوم/شهر/سنة
   static String formatDate(DateTime date) {
-    final String day =
-        date.day.toString().padLeft(2, '0');
-
-    final String month =
-        date.month.toString().padLeft(2, '0');
-
-    final String year =
-        date.year.toString();
+    final String day = date.day.toString().padLeft(2, '0');
+    final String month = date.month.toString().padLeft(2, '0');
+    final String year = date.year.toString();
 
     return '$day/$month/$year';
   }
