@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'activation_screen.dart';
+import 'backup_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String selectedPage;
@@ -176,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return _buildGeneralSettingsView();
 
       case "backup":
-        return _buildBackupView();
+        return const BackupScreen();
 
       case "activation":
         return const ActivationScreen();
@@ -291,83 +292,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ============================================================
   // 2 - النسخ الاحتياطي
   // ============================================================
-
-  Widget _buildBackupView() {
-    return _buildCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildSectionTitle(
-            "النسخ الاحتياطي والاستعادة",
-            LucideIcons.database,
-          ),
-
-          const SizedBox(height: 8),
-
-          const Text(
-            "إدارة النسخ الاحتياطية واستعادة بيانات النظام.",
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 12,
-              color: Color(0xff7A8495),
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          _buildActionButton(
-            title: "إنشاء نسخة احتياطية",
-            icon: LucideIcons.download,
-            color: const Color(0xff2864D7),
-            onPressed: () {
-              _showMessage("تم طلب إنشاء نسخة احتياطية");
-            },
-          ),
-
-          const SizedBox(height: 10),
-
-          _buildActionButton(
-            title: "استعادة نسخة احتياطية",
-            icon: LucideIcons.upload,
-            color: const Color(0xff374151),
-            onPressed: () {
-              _showMessage("تم اختيار استعادة النسخة الاحتياطية");
-            },
-          ),
-
-          const SizedBox(height: 16),
-
-          Container(
-            padding: const EdgeInsets.all(13),
-            decoration: BoxDecoration(
-              color: const Color(0xffF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  "آخر نسخة احتياطية",
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 5),
-                Text(
-                  "لا توجد نسخة محفوظة",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xff7A8495),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ============================================================
   // 3 - التفعيل
