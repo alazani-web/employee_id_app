@@ -807,17 +807,10 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         details.add('تم تجاهل $skippedCount موظف مكرر');
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            details.isEmpty
-                ? 'لم يتم العثور على موظفين جدد.'
-                : details.join(' • '),
-          ),
-          backgroundColor:
-              importedCount > 0 ? Colors.green : Colors.orange,
-          duration: const Duration(seconds: 4),
-        ),
+      await _showImportResultDialog(
+        context,
+        importedCount: importedCount,
+        skippedCount: skippedCount,
       );
     } catch (e) {
       closeLoadingDialog();
@@ -830,6 +823,145 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
         );
       }
     }
+  }
+
+  Future<void> _showImportResultDialog(
+    BuildContext context, {
+    required int importedCount,
+    required int skippedCount,
+  }) async {
+    if (!context.mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Icon(
+                  importedCount > 0
+                      ? Icons.check_circle
+                      : Icons.info_outline,
+                  color: importedCount > 0
+                      ? const Color(0xff16A34A)
+                      : const Color(0xffD97706),
+                  size: 28,
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'نتيجة استيراد الموظفين',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildImportResultRow(
+                  icon: Icons.person_add_alt_1,
+                  title: 'تم استيراد الموظفين',
+                  value: '$importedCount',
+                  color: const Color(0xff16A34A),
+                ),
+                if (skippedCount > 0) ...[
+                  const SizedBox(height: 10),
+                  _buildImportResultRow(
+                    icon: Icons.person_off_outlined,
+                    title: 'تم تجاهل الموظفين المكررين',
+                    value: '$skippedCount',
+                    color: const Color(0xffD97706),
+                  ),
+                ],
+                if (importedCount == 0 && skippedCount == 0) ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'لم يتم العثور على موظفين جدد.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xff64748B),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            actionsAlignment: MainAxisAlignment.center,
+            actions: [
+              SizedBox(
+                width: 130,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff2864D7),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                  ),
+                  child: const Text('حسنًا'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImportResultRow({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.18)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              title,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xff374151),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showImportModal(BuildContext context) {
@@ -1641,7 +1773,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        onPressed: () {
+                        onPressed: () async {
                           final updated = emp.copyWith(
                             name: nameController.text,
                             idNumber: idController.text,
@@ -1649,6 +1781,15 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           );
                           Provider.of<EmployeeProvider>(context, listen: false).updateEmployee(updated);
                           Navigator.pop(ctx);
+
+                          await Future<void>.delayed(const Duration(milliseconds: 180));
+                          if (!mounted) return;
+                          _showActionSuccessDialog(
+                            context,
+                            title: 'تم تعديل بيانات الموظف',
+                            subtitle: 'تم حفظ التعديلات بنجاح',
+                            employeeName: updated.name,
+                          );
                         },
                         child: const Text('حفظ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                       ),
@@ -1944,16 +2085,32 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        onPressed: () {
-                          Provider.of<EmployeeProvider>(context, listen: false).renewEmployeeId(emp.id, formattedDate);
-                          Navigator.pop(confirmCtx); // إغلاق نافذة التأكيد
-                          Navigator.pop(context);    // إغلاق نافذة التجديد الرئيسية
+                        onPressed: () async {
+                          // نفس عملية التجديد الحالية بدون تغيير في منطق الحفظ أو الحساب.
+                          Provider.of<EmployeeProvider>(context, listen: false)
+                              .renewEmployeeId(emp.id, formattedDate);
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('تم تجديد هوية الموظف ${emp.name} بنجاح حتى $formattedDate'),
-                              backgroundColor: Colors.green,
-                            ),
+                          // نحتفظ بالـ Navigator الرئيسي قبل إغلاق نوافذ التجديد،
+                          // لأن context الخاص بالـ Dialog يصبح غير صالح بعد الإغلاق.
+                          final rootNavigator = Navigator.of(
+                            context,
+                            rootNavigator: true,
+                          );
+
+                          rootNavigator.pop(); // إغلاق نافذة التأكيد
+                          rootNavigator.pop(); // إغلاق نافذة التجديد الرئيسية
+
+                          // عرض رسالة النجاح بعد اكتمال إزالة النوافذ.
+                          await Future<void>.delayed(
+                            const Duration(milliseconds: 180),
+                          );
+
+                          if (!rootNavigator.mounted) return;
+
+                          _showRenewalSuccessDialog(
+                            rootNavigator.context,
+                            employeeName: emp.name,
+                            formattedDate: formattedDate,
                           );
                         },
                         child: const Text('نعم، تأكيد التجديد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
@@ -2265,9 +2422,19 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        onPressed: () {
+                        onPressed: () async {
                           Provider.of<EmployeeProvider>(context, listen: false).removeEmployee(emp.id);
                           Navigator.pop(ctx);
+
+                          await Future<void>.delayed(const Duration(milliseconds: 180));
+                          if (!mounted) return;
+                          _showActionSuccessDialog(
+                            context,
+                            title: 'تم حذف الموظف بنجاح',
+                            subtitle: 'تمت إزالة الموظف من قائمة الموظفين',
+                            employeeName: emp.name,
+                            isDelete: true,
+                          );
                         },
                         child: const Text('حذف نهائي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                       ),
@@ -2315,6 +2482,84 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
       ),
     );
   }
+
+  // رسالة نجاح موحدة لعمليات التعديل والحذف.
+  void _showActionSuccessDialog(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required String employeeName,
+    bool isDelete = false,
+  }) {
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: title,
+      barrierColor: const Color(0x99000000),
+      transitionDuration: const Duration(milliseconds: 420),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return _ActionSuccessDialog(
+          title: title,
+          subtitle: subtitle,
+          employeeName: employeeName,
+          isDelete: isDelete,
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+          ),
+          child: ScaleTransition(scale: curved, child: child),
+        );
+      },
+    );
+  }
+
+  // رسالة نجاح التجديد فقط — لا تغيّر منطق التجديد أو الحفظ.
+  void _showRenewalSuccessDialog(
+    BuildContext context, {
+    required String employeeName,
+    required String formattedDate,
+  }) {
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'تم التجديد بنجاح',
+      barrierColor: const Color(0x99000000),
+      transitionDuration: const Duration(milliseconds: 420),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return _RenewalSuccessDialog(
+          employeeName: employeeName,
+          formattedDate: formattedDate,
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutBack,
+        );
+
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+          ),
+          child: ScaleTransition(
+            scale: curved,
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+
 }
 
 class _DayLabel extends StatelessWidget {
@@ -2331,5 +2576,451 @@ class _DayLabel extends StatelessWidget {
         style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
+  }
+}
+
+class _RenewalSuccessDialog extends StatefulWidget {
+  final String employeeName;
+  final String formattedDate;
+
+  const _RenewalSuccessDialog({
+    required this.employeeName,
+    required this.formattedDate,
+  });
+
+  @override
+  State<_RenewalSuccessDialog> createState() => _RenewalSuccessDialogState();
+}
+
+class _RenewalSuccessDialogState extends State<_RenewalSuccessDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _circleAnimation;
+  late final Animation<double> _checkAnimation;
+  late final Animation<double> _contentAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1050),
+    );
+
+    _circleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.58, curve: Curves.easeOutBack),
+    );
+
+    _checkAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.32, 0.82, curve: Curves.easeOutCubic),
+    );
+
+    _contentAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.55, 1.0, curve: Curves.easeOut),
+    );
+
+    _controller.forward();
+
+    Future.delayed(const Duration(milliseconds: 2300), () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 360,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33000000),
+                  blurRadius: 35,
+                  offset: Offset(0, 16),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ScaleTransition(
+                  scale: _circleAnimation,
+                  child: SizedBox(
+                    width: 92,
+                    height: 92,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 92,
+                          height: 92,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xffDCFCE7),
+                          ),
+                        ),
+                        Container(
+                          width: 70,
+                          height: 70,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Color(0xff16A34A),
+                          ),
+                          child: AnimatedBuilder(
+                            animation: _checkAnimation,
+                            builder: (context, child) {
+                              return CustomPaint(
+                                painter: _AnimatedCheckPainter(
+                                  progress: _checkAnimation.value,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                FadeTransition(
+                  opacity: _contentAnimation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.12),
+                      end: Offset.zero,
+                    ).animate(_contentAnimation),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'تم تجديد الهوية بنجاح',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xff172033),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          widget.employeeName,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xff475569),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'تم تحديث تاريخ الانتهاء إلى ${widget.formattedDate}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xff7A8495),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xffF0FDF4),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xffBBF7D0),
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.verified_rounded,
+                                size: 17,
+                                color: Color(0xff16A34A),
+                              ),
+                              SizedBox(width: 7),
+                              Text(
+                                'تم حفظ التحديث بنجاح',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xff15803D),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionSuccessDialog extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final String employeeName;
+  final bool isDelete;
+
+  const _ActionSuccessDialog({
+    required this.title,
+    required this.subtitle,
+    required this.employeeName,
+    required this.isDelete,
+  });
+
+  @override
+  State<_ActionSuccessDialog> createState() => _ActionSuccessDialogState();
+}
+
+class _ActionSuccessDialogState extends State<_ActionSuccessDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _circleAnimation;
+  late final Animation<double> _checkAnimation;
+  late final Animation<double> _contentAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 950),
+    );
+    _circleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.55, curve: Curves.easeOutBack),
+    );
+    _checkAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.28, 0.78, curve: Curves.easeOutCubic),
+    );
+    _contentAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.5, 1.0, curve: Curves.easeOut),
+    );
+    _controller.forward();
+    Future.delayed(const Duration(milliseconds: 2200), () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = widget.isDelete
+        ? const Color(0xffDC2626)
+        : const Color(0xff16A34A);
+    final light = widget.isDelete
+        ? const Color(0xffFEE2E2)
+        : const Color(0xffDCFCE7);
+
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 360,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x33000000),
+                  blurRadius: 35,
+                  offset: Offset(0, 16),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ScaleTransition(
+                  scale: _circleAnimation,
+                  child: Container(
+                    width: 92,
+                    height: 92,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: light,
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: accent,
+                        ),
+                        child: AnimatedBuilder(
+                          animation: _checkAnimation,
+                          builder: (context, child) {
+                            return CustomPaint(
+                              painter: _AnimatedCheckPainter(
+                                progress: _checkAnimation.value,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                FadeTransition(
+                  opacity: _contentAnimation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.12),
+                      end: Offset.zero,
+                    ).animate(_contentAnimation),
+                    child: Column(
+                      children: [
+                        Text(
+                          widget.title,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xff172033),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          widget.employeeName,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xff475569),
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          widget.subtitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xff7A8495),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 9,
+                          ),
+                          decoration: BoxDecoration(
+                            color: light,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                widget.isDelete
+                                    ? Icons.delete_sweep_rounded
+                                    : Icons.verified_rounded,
+                                size: 17,
+                                color: accent,
+                              ),
+                              const SizedBox(width: 7),
+                              Text(
+                                'تم حفظ العملية بنجاح',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: accent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedCheckPainter extends CustomPainter {
+  final double progress;
+
+  const _AnimatedCheckPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 5.2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..moveTo(size.width * 0.23, size.height * 0.52)
+      ..lineTo(size.width * 0.43, size.height * 0.70)
+      ..lineTo(size.width * 0.77, size.height * 0.32);
+
+    final metrics = path.computeMetrics();
+    if (metrics.isEmpty) return;
+
+    final metric = metrics.first;
+    final visiblePath = metric.extractPath(
+      0,
+      metric.length * progress,
+    );
+
+    canvas.drawPath(visiblePath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AnimatedCheckPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
