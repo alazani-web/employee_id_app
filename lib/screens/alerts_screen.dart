@@ -12,6 +12,8 @@ import '../models/visit.dart';
 import '../widgets/app_date_picker.dart';
 import '../utils/renewal_calculator.dart';
 import '../utils/family_visit_calculator.dart';
+import '../widgets/renewal_dialog.dart';
+import '../widgets/action_result_dialog.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -119,30 +121,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   DateTime? _parseDate(String value) {
-    final text = value.trim();
-    if (text.isEmpty) return null;
-
-    final iso = DateTime.tryParse(text);
-    if (iso != null) return DateTime(iso.year, iso.month, iso.day);
-
-    final normalized = text.replaceAll('/', '-');
-    final parts = normalized.split('-');
-    if (parts.length != 3) return null;
-
-    final a = int.tryParse(parts[0]);
-    final b = int.tryParse(parts[1]);
-    final c = int.tryParse(parts[2]);
-    if (a == null || b == null || c == null) return null;
-
-    if (a > 31) {
-      return DateTime.tryParse(
-        '${a.toString().padLeft(4, '0')}-${b.toString().padLeft(2, '0')}-${c.toString().padLeft(2, '0')}',
-      );
-    }
-
-    return DateTime.tryParse(
-      '${c.toString().padLeft(4, '0')}-${b.toString().padLeft(2, '0')}-${a.toString().padLeft(2, '0')}',
-    );
+    return RenewalCalculator.parseDate(value);
   }
 
   int _daysRemaining(DateTime date) {
@@ -683,70 +662,29 @@ class _AlertsScreenState extends State<AlertsScreen> {
       '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
   Future<void> _showEmployeeRenewDialog(BuildContext context, Employee emp) async {
-    int selectedMonths = 12;
-    final notesController = TextEditingController();
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          final current = DateTime.tryParse(emp.expiryDate) ?? DateTime.now();
-          final newDate = RenewalCalculator.calculateRenewalDate(
-            expiryDate: current,
-            renewalMonths: selectedMonths,
-          );
-          final formatted = _dateFromDateTime(newDate);
-          return Directionality(
-            textDirection: TextDirection.rtl,
-            child: Dialog(
-              insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 360),
-                padding: const EdgeInsets.all(20),
-                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    CircleAvatar(
-                      backgroundColor: const Color(0xffF3F4F6), radius: 16,
-                      child: IconButton(icon: const Icon(Icons.close, size: 16, color: Colors.grey), onPressed: () => Navigator.pop(ctx)),
-                    ),
-                    Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: const Color(0xffF0FDF4), borderRadius: BorderRadius.circular(10)), child: const Icon(Icons.autorenew, color: Color(0xff16A34A), size: 20)),
-                  ]),
-                  const SizedBox(height: 10),
-                  const Center(child: Text('تجديد بيانات الموظف', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
-                  Center(child: Text(emp.name, style: const TextStyle(color: Colors.grey, fontSize: 12))),
-                  const SizedBox(height: 16),
-                  const Text('مدة التجديد (بالأشهر)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                  const SizedBox(height: 8),
-                  Row(children: [3, 6, 9, 12].map((months) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 2), child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: selectedMonths == months ? const Color(0xFF1D4ED8) : const Color(0xffF8FAFC), foregroundColor: selectedMonths == months ? Colors.white : Colors.black87, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 8), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                    onPressed: () => setDialogState(() => selectedMonths = months), child: Text('$months أشهر', style: const TextStyle(fontSize: 11)),
-                  )))).toList()),
-                  const SizedBox(height: 14),
-                  _renewInfoRow('تاريخ الانتهاء الحالي:', _dateFromDateTime(current), const Color(0xff6B7280)),
-                  const SizedBox(height: 8),
-                  _renewInfoRow('تاريخ الانتهاء الجديد:', formatted, const Color(0xff15803D)),
-                  const SizedBox(height: 12),
-                  const Text('ملاحظات التجديد', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                  const SizedBox(height: 6),
-                  TextField(controller: notesController, decoration: const InputDecoration(hintText: 'أدخل ملاحظات اختيارية...', filled: true, fillColor: Color(0xffF8FAFC), border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(10)), borderSide: BorderSide(color: Color(0xffE2E8F0)))),),
-                  const SizedBox(height: 18),
-                  Row(children: [
-                    Expanded(child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1D4ED8), foregroundColor: Colors.white, elevation: 0, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), onPressed: () async {
-                      await context.read<EmployeeProvider>().renewEmployeeId(emp.id, formatted);
-                      if (dialogContext.mounted) Navigator.pop(dialogContext);
-                    }, child: const Text('تأكيد التجديد', style: TextStyle(fontWeight: FontWeight.bold)))),
-                    const SizedBox(width: 10),
-                    Expanded(child: TextButton(style: TextButton.styleFrom(backgroundColor: const Color(0xff374151), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء', style: TextStyle(fontWeight: FontWeight.bold)))),
-                  ]),
-                ]),
-              ),
-            ),
-          );
-        },
-      ),
+    final result = await RenewalDialog.show(
+      context,
+      employeeName: emp.name,
+      expiryDate: emp.expiryDate,
     );
-    notesController.dispose();
+
+    if (result == null || !mounted) return;
+
+    await context.read<EmployeeProvider>().renewEmployeeId(
+      emp.id,
+      result.formattedDate,
+    );
+
+    if (!mounted) return;
+    setState(() {});
+
+    await ActionResultDialog.show(
+      context,
+      type: ActionResultType.success,
+      title: 'تم تجديد الهوية بنجاح',
+      name: emp.name,
+      message: 'تم تحديث تاريخ الانتهاء إلى ${result.formattedDate}',
+    );
   }
 
   Future<void> _showVisitOnlyRenewDialog(BuildContext context, Visit visit) async {
@@ -759,7 +697,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-            final newDate = FamilyVisitCalculator.calculateNextRenewal(
+            final newDate = FamilyVisitCalculator.calculateRenewalDate(
               expiryDate: _parseDate(visit.expiryDate) ?? DateTime.now(),
               renewalMonths: months,
             );
@@ -918,8 +856,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             final insuranceExpiry = _parseDate(visit.insuranceExpiryDate) ?? DateTime.now();
-            final newInsuranceDate = FamilyVisitCalculator.formatDate(
-              FamilyVisitCalculator.calculateNextRenewal(
+            final newInsuranceDate = _dateFromDateTime(
+              RenewalCalculator.calculateRenewalDate(
                 expiryDate: insuranceExpiry,
                 renewalMonths: months,
               ),

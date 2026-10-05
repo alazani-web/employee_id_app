@@ -1,79 +1,113 @@
-// lib/utils/renewal_calculator.dart
-
-/// حاسبة تجديد هويات الموظفين.
-///
-/// مدد التجديد المسموح بها للموظفين:
-/// - 3 أشهر
-/// - 6 أشهر
-/// - 9 أشهر
-/// - 12 شهر
-///
-/// هذا الملف خاص بالموظفين فقط.
-/// الزيارات العائلية لها حاسبة مستقلة في:
-/// family_visit_calculator.dart
 class RenewalCalculator {
-  /// حساب تاريخ التجديد القادم للموظف.
+  /// قراءة تاريخ الانتهاء من جميع الصيغ المستخدمة في التطبيق.
   ///
-  /// وفق طريقة الاحتساب المرسلة:
-  /// 3 أشهر = 90 يوم
-  /// 6 أشهر = 178 يوم
-  /// 12 شهر = 355 يوم
+  /// يدعم:
+  /// yyyy-MM-dd
+  /// dd-MM-yyyy
+  /// dd/MM/yyyy
+  static DateTime? parseDate(String value) {
+    final raw = value.trim();
+
+    if (raw.isEmpty) {
+      return null;
+    }
+
+    final normalized = raw.replaceAll('/', '-');
+
+    // أولاً: yyyy-MM-dd
+    final direct = DateTime.tryParse(normalized);
+
+    if (direct != null) {
+      return DateTime(
+        direct.year,
+        direct.month,
+        direct.day,
+      );
+    }
+
+    // ثانياً: محاولة قراءة dd-MM-yyyy
+    final parts = normalized.split('-');
+
+    if (parts.length != 3) {
+      return null;
+    }
+
+    final first = int.tryParse(parts[0]);
+    final second = int.tryParse(parts[1]);
+    final third = int.tryParse(parts[2]);
+
+    if (first == null ||
+        second == null ||
+        third == null) {
+      return null;
+    }
+
+    DateTime? parsed;
+
+    // yyyy-MM-dd
+    if (first > 31) {
+      parsed = DateTime.tryParse(
+        '${first.toString().padLeft(4, '0')}-'
+        '${second.toString().padLeft(2, '0')}-'
+        '${third.toString().padLeft(2, '0')}',
+      );
+    }
+
+    // dd-MM-yyyy
+    else {
+      parsed = DateTime.tryParse(
+        '${third.toString().padLeft(4, '0')}-'
+        '${second.toString().padLeft(2, '0')}-'
+        '${first.toString().padLeft(2, '0')}',
+      );
+    }
+
+    if (parsed == null) {
+      return null;
+    }
+
+    return DateTime(
+      parsed.year,
+      parsed.month,
+      parsed.day,
+    );
+  }
+
+  /// حساب تاريخ الانتهاء الجديد.
   ///
-  /// ملاحظة: 9 أشهر غير موجودة صراحة في المرجع المرسل،
-  /// وتم اعتماد 267 يوم كامتداد لدورة 3 أشهر.
+  /// مهم:
+  /// الحساب يبدأ من تاريخ انتهاء الهوية الحالي،
+  /// وليس من تاريخ اليوم.
   static DateTime calculateRenewalDate({
     required DateTime expiryDate,
     required int renewalMonths,
   }) {
-    final int renewalDays = _renewalDays(renewalMonths);
-    return expiryDate.add(Duration(days: renewalDays));
+    return expiryDate.add(
+      Duration(
+        days: getRenewalDays(renewalMonths),
+      ),
+    );
   }
 
-  static int _renewalDays(int renewalMonths) {
+  /// معادلة التجديد المعتمدة في التطبيق.
+  static int getRenewalDays(int renewalMonths) {
     switch (renewalMonths) {
       case 3:
         return 90;
+
       case 6:
         return 178;
+
       case 9:
-        return 206;
+        return 267;
+
       case 12:
         return 355;
+
       default:
         throw ArgumentError(
-          'مدة تجديد الموظف يجب أن تكون 3 أو 6 أو 9 أو 12 شهرًا.',
+          'مدة التجديد يجب أن تكون 3 أو 6 أو 9 أو 12 شهر',
         );
     }
-  }
-
-  static int getRenewalMonths(String? renewalPeriod) {
-    if (renewalPeriod == null || renewalPeriod.trim().isEmpty) {
-      return 3;
-    }
-
-    final String value = renewalPeriod.trim().toLowerCase();
-
-    if (value.contains('12')) {
-      return 12;
-    }
-    if (value.contains('9')) {
-      return 9;
-    }
-    if (value.contains('6')) {
-      return 6;
-    }
-    if (value.contains('3')) {
-      return 3;
-    }
-
-    return 3;
-  }
-
-  static String formatDate(DateTime date) {
-    final String day = date.day.toString().padLeft(2, '0');
-    final String month = date.month.toString().padLeft(2, '0');
-    final String year = date.year.toString();
-
-    return '$day/$month/$year';
   }
 }

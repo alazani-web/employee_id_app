@@ -14,6 +14,8 @@ import '../models/visit.dart';
 import '../providers/visit_provider.dart';
 import '../widgets/app_date_picker.dart';
 import '../widgets/confirm_delete_dialog.dart';
+import '../widgets/action_result_dialog.dart';
+import '../widgets/renewal_dialog.dart';
 import '../utils/family_visit_calculator.dart';
 
 class VisitsScreen extends StatefulWidget {
@@ -1506,250 +1508,32 @@ class _VisitsScreenState extends State<VisitsScreen> {
   }
 
   Future<void> _showRenewVisit(BuildContext context, Visit visit) async {
-    int months = 1;
-    String newInsurance = visit.insuranceExpiryDate;
-    final insuranceController = TextEditingController(text: newInsurance);
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (dialogContext, setDialogState) {
-            final newDate = FamilyVisitCalculator.formatDate(
-              FamilyVisitCalculator.calculateNextRenewal(
-                expiryDate: _parseDate(visit.expiryDate) ?? DateTime.now(),
-                renewalMonths: months,
-              ),
-            );
-
-            return Directionality(
-              textDirection: TextDirection.rtl,
-              child: Dialog(
-                insetPadding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 20,
-                ),
-                backgroundColor: Colors.white,
-                surfaceTintColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 390),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: const Icon(
-                          Icons.autorenew,
-                          color: primaryBlue,
-                          size: 21,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'تجديد الزيارة',
-                        style: TextStyle(
-                          color: dark,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        visit.visitorName,
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 10.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(11),
-                          border: Border.all(
-                            color: const Color(0xFFE5E7EB),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            _renewRow(
-                              'انتهاء الزيارة الحالي',
-                              _displayDate(visit.expiryDate),
-                              const Color(0xFF6B7280),
-                            ),
-                            const SizedBox(height: 6),
-                            _renewRow(
-                              'انتهاء الزيارة الجديد',
-                              _displayDate(newDate),
-                              primaryBlue,
-                            ),
-                            const SizedBox(height: 6),
-                            _renewRow(
-                              'انتهاء التأمين الحالي',
-                              _displayDate(visit.insuranceExpiryDate),
-                              const Color(0xFF6B7280),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          'اختر مدة التجديد',
-                          style: TextStyle(
-                            color: dark,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [1, 3].map((m) {
-                          final active = months == m;
-                          return Expanded(
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                left: m == 12 ? 0 : 6,
-                              ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(11),
-                                onTap: () => setDialogState(() {
-                                  months = m;
-                                }),
-                                child: Container(
-                                  height: 40,
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: active
-                                        ? primaryBlue
-                                        : Colors.white,
-                                    borderRadius: BorderRadius.circular(11),
-                                    border: Border.all(
-                                      color: active
-                                          ? primaryBlue
-                                          : const Color(0xFFE5E7EB),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    '$m شهر',
-                                    style: TextStyle(
-                                      color: active ? Colors.white : dark,
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 6),
-                      _field(
-                        'تاريخ انتهاء التأمين الجديد',
-                        insuranceController,
-                        readOnly: true,
-                        icon: Icons.calendar_month_outlined,
-                        onTap: () async {
-                          final value = await _pickDate(
-                            context,
-                            initial: newInsurance,
-                          );
-                          if (value != null) {
-                            newInsurance = value;
-                            insuranceController.text = value;
-                            setDialogState(() {});
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 42,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await context
-                                .read<VisitProvider>()
-                                .renewVisit(
-                                  visit.id,
-                                  newExpiryDate: newDate,
-                                  renewalMonths: months,
-                                  newInsuranceExpiryDate:
-                                      newInsurance.isEmpty
-                                          ? null
-                                          : newInsurance,
-                                );
-                            if (dialogContext.mounted) {
-                              Navigator.pop(dialogContext);
-                            }
-                            if (!context.mounted) return;
-                            _showNotice(
-                              context,
-                              title: 'تم تجديد الزيارة',
-                              message:
-                                  'تم تحديث تاريخ انتهاء الزيارة والتأمين بنجاح.',
-                              type: _NoticeType.success,
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryBlue,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Text(
-                            'تأكيد التجديد',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 40,
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          style: TextButton.styleFrom(
-                            backgroundColor: const Color(0xFF374151),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Text(
-                            'إلغاء',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            );
-          },
-        );
-      },
+    final result = await RenewalDialog.showVisit(
+      context,
+      visitorName: visit.visitorName,
+      expiryDate: visit.expiryDate,
     );
 
-    insuranceController.dispose();
+    if (result == null || !mounted) return;
+
+    await context.read<VisitProvider>().renewVisit(
+      visit.id,
+      newExpiryDate: result.formattedDate,
+      renewalMonths: result.months,
+      newInsuranceExpiryDate: null,
+    );
+
+    if (!mounted) return;
+
+    await ActionResultDialog.show(
+      context,
+      type: ActionResultType.success,
+      title: 'تم تجديد الزيارة بنجاح',
+      name: visit.visitorName,
+      message: 'تم حفظ تاريخ التجديد الجديد بنجاح.',
+    );
   }
+
 
   Widget _renewRow(String title, String value, Color valueColor) {
     return Row(

@@ -1598,11 +1598,11 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     Map<String, dynamic> document,
   ) async {
     int years = 1;
+    bool manualDate = false;
     String? newDate = _calculateDocumentRenewal(
       document['expiry']?.toString() ?? '',
       years,
     );
-    final notesController = TextEditingController();
 
     await showDialog<void>(
       context: context,
@@ -1611,10 +1611,13 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-            newDate = _calculateDocumentRenewal(
-              document['expiry']?.toString() ?? '',
-              years,
-            );
+            // لا نعيد حساب التاريخ إذا اختاره المستخدم يدويًا.
+            if (!manualDate) {
+              newDate = _calculateDocumentRenewal(
+                document['expiry']?.toString() ?? '',
+                years,
+              );
+            }
 
             return Directionality(
               textDirection: TextDirection.rtl,
@@ -1669,7 +1672,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                           document['type']?.toString() == 'السجل التجاري'
                               ? "التأكيد السنوي"
                               : "تجديد الوثيقة",
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
                             color: Color(0xff111827),
@@ -1713,7 +1716,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                     ? "موعد التأكيد الجديد:"
                                     : "الانتهاء الجديد:",
                                 _displayDate(newDate),
-                                primaryBlue,
+                                manualDate
+                                    ? const Color(0xff16A34A)
+                                    : primaryBlue,
                               ),
                             ],
                           ),
@@ -1763,9 +1768,17 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                 child: _yearChoice(
                                   label: "سنة واحدة",
                                   value: 1,
-                                  selected: years == 1,
-                                  onTap: () =>
-                                      setDialogState(() => years = 1),
+                                  selected: years == 1 && !manualDate,
+                                  onTap: () {
+                                    setDialogState(() {
+                                      years = 1;
+                                      manualDate = false;
+                                      newDate = _calculateDocumentRenewal(
+                                        document['expiry']?.toString() ?? '',
+                                        years,
+                                      );
+                                    });
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1773,9 +1786,17 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                 child: _yearChoice(
                                   label: "سنتان",
                                   value: 2,
-                                  selected: years == 2,
-                                  onTap: () =>
-                                      setDialogState(() => years = 2),
+                                  selected: years == 2 && !manualDate,
+                                  onTap: () {
+                                    setDialogState(() {
+                                      years = 2;
+                                      manualDate = false;
+                                      newDate = _calculateDocumentRenewal(
+                                        document['expiry']?.toString() ?? '',
+                                        years,
+                                      );
+                                    });
+                                  },
                                 ),
                               ),
                             ],
@@ -1787,9 +1808,17 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                 child: _yearChoice(
                                   label: "3 سنوات",
                                   value: 3,
-                                  selected: years == 3,
-                                  onTap: () =>
-                                      setDialogState(() => years = 3),
+                                  selected: years == 3 && !manualDate,
+                                  onTap: () {
+                                    setDialogState(() {
+                                      years = 3;
+                                      manualDate = false;
+                                      newDate = _calculateDocumentRenewal(
+                                        document['expiry']?.toString() ?? '',
+                                        years,
+                                      );
+                                    });
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -1797,41 +1826,105 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                 child: _yearChoice(
                                   label: "5 سنوات",
                                   value: 5,
-                                  selected: years == 5,
-                                  onTap: () =>
-                                      setDialogState(() => years = 5),
+                                  selected: years == 5 && !manualDate,
+                                  onTap: () {
+                                    setDialogState(() {
+                                      years = 5;
+                                      manualDate = false;
+                                      newDate = _calculateDocumentRenewal(
+                                        document['expiry']?.toString() ?? '',
+                                        years,
+                                      );
+                                    });
+                                  },
                                 ),
                               ),
                             ],
                           ),
                         ],
 
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: notesController,
-                          maxLines: 2,
-                          textAlign: TextAlign.right,
-                          decoration: InputDecoration(
-                            hintText: "ملاحظات اختيارية...",
-                            hintStyle: const TextStyle(
-                              color: Color(0xff9CA3AF),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: const Text(
+                            "تعديل تاريخ التجديد",
+                            style: TextStyle(
                               fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xff111827),
                             ),
-                            filled: true,
-                            fillColor: const Color(0xffF8FAFC),
-                            border: OutlineInputBorder(
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        InkWell(
+                          onTap: () async {
+                            final picked = await AppDatePicker.show(
+                              context,
+                              initialDate:
+                                  _parseDate(newDate) ?? DateTime.now(),
+                            );
+
+                            if (picked != null) {
+                              setDialogState(() {
+                                manualDate = true;
+                                newDate = picked;
+                              });
+                            }
+                          },
+                          borderRadius: BorderRadius.circular(13),
+                          child: Container(
+                            width: double.infinity,
+                            height: 50,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: manualDate
+                                  ? const Color(0xffF0FDF4)
+                                  : const Color(0xffF8FAFC),
                               borderRadius: BorderRadius.circular(13),
-                              borderSide: const BorderSide(
-                                color: Color(0xffE2E8F0),
+                              border: Border.all(
+                                color: manualDate
+                                    ? const Color(0xff86EFAC)
+                                    : const Color(0xffE2E8F0),
                               ),
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(13),
-                              borderSide: const BorderSide(
-                                color: Color(0xffE2E8F0),
-                              ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_month_outlined,
+                                  size: 20,
+                                  color: manualDate
+                                      ? const Color(0xff16A34A)
+                                      : primaryBlue,
+                                ),
+                                const SizedBox(width: 9),
+                                Expanded(
+                                  child: Text(
+                                    manualDate
+                                        ? 'تم اختيار تاريخ مخصص'
+                                        : 'اختيار تاريخ التجديد يدويًا',
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: manualDate
+                                          ? const Color(0xff15803D)
+                                          : const Color(0xff475569),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _displayDate(newDate),
+                                  style: TextStyle(
+                                    color: manualDate
+                                        ? const Color(0xff15803D)
+                                        : primaryBlue,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
                             ),
-                            contentPadding: const EdgeInsets.all(12),
                           ),
                         ),
 
@@ -1846,31 +1939,32 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                     final expiry = newDate;
                                     if (expiry == null) {
                                       _showMessage(
-                                        "تعذر حساب تاريخ التجديد",
+                                        "تعذر تحديد تاريخ التجديد",
                                       );
                                       return;
                                     }
 
                                     setState(() {
                                       document['expiry'] = expiry;
-                                      final note =
-                                          notesController.text.trim();
-                                      if (note.isNotEmpty) {
-                                        document['notes'] = note;
-                                      }
                                     });
 
+                                    final number =
+                                        document['number']?.toString() ?? '';
+
                                     _addDocumentLog(
-                                      document['number']?.toString() ?? '',
+                                      number,
                                       document['type']?.toString() == 'السجل التجاري'
                                           ? 'تم التأكيد السنوي لبيانات السجل التجاري حتى ${_displayDate(expiry)}'
-                                          : 'تم تجديد الوثيقة لمدة $years '
-                                            '${years == 1 ? 'سنة' : 'سنوات'} '
-                                            'حتى ${_displayDate(expiry)}',
+                                          : manualDate
+                                              ? 'تم تعديل تاريخ تجديد الوثيقة يدويًا إلى ${_displayDate(expiry)}'
+                                              : 'تم تجديد الوثيقة لمدة $years '
+                                                '${years == 1 ? 'سنة' : 'سنوات'} '
+                                                'حتى ${_displayDate(expiry)}',
                                     );
 
                                     await _saveDocumentsAndRefreshAlerts();
 
+                                    if (!dialogContext.mounted) return;
                                     Navigator.pop(dialogContext);
                                     _showMessage(
                                       document['type']?.toString() == 'السجل التجاري'
@@ -1931,8 +2025,6 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         );
       },
     );
-
-    notesController.dispose();
   }
 
   Widget _yearChoice({
