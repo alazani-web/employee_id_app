@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/employee.dart';
+import '../services/notification_service.dart';
+import '../utils/renewal_calculator.dart';
 
 class EmployeeProvider extends ChangeNotifier {
   static const String _storageKey = 'saved_employees';
@@ -33,6 +35,21 @@ class EmployeeProvider extends ChangeNotifier {
     return result.replaceAll(RegExp(r'[\s\-_/]+'), '');
   }
 
+  Future<void> _syncEmployeeNotification(Employee employee) async {
+    final expiry = RenewalCalculator.parseDate(employee.expiryDate);
+    if (expiry == null || employee.id.isEmpty) return;
+
+    try {
+      await NotificationService.instance.scheduleEmployee(
+        employeeId: employee.id,
+        employeeName: employee.name,
+        identityExpiry: expiry,
+      );
+    } catch (e) {
+      debugPrint('Employee notification error: $e');
+    }
+  }
+
   // ------------------------------------------------------------
   // إضافة موظف واحد
   // ------------------------------------------------------------
@@ -54,6 +71,7 @@ class EmployeeProvider extends ChangeNotifier {
     _employees.add(employee);
     notifyListeners();
     await _saveEmployeesToStorage();
+    await _syncEmployeeNotification(employee);
   }
 
   // ------------------------------------------------------------
@@ -97,6 +115,9 @@ class EmployeeProvider extends ChangeNotifier {
     _employees.addAll(validEmployees);
     notifyListeners();
     await _saveEmployeesToStorage();
+    for (final employee in validEmployees) {
+      await _syncEmployeeNotification(employee);
+    }
 
     return validEmployees.length;
   }
@@ -120,6 +141,7 @@ class EmployeeProvider extends ChangeNotifier {
     _employees[index] = updatedEmployee;
     notifyListeners();
     await _saveEmployeesToStorage();
+    await _syncEmployeeNotification(updatedEmployee);
   }
 
   // ------------------------------------------------------------
@@ -147,6 +169,7 @@ class EmployeeProvider extends ChangeNotifier {
 
     notifyListeners();
     await _saveEmployeesToStorage();
+    await _syncEmployeeNotification(_employees[index]);
   }
 
   // ------------------------------------------------------------
@@ -159,6 +182,13 @@ class EmployeeProvider extends ChangeNotifier {
     _employees.removeWhere((employee) => employee.id == id);
 
     if (_employees.length == oldLength) return;
+
+    try {
+      await NotificationService.instance.cancelItemNotifications(
+        type: NotificationType.employee,
+        itemId: id,
+      );
+    } catch (_) {}
 
     notifyListeners();
     await _saveEmployeesToStorage();
@@ -182,6 +212,10 @@ class EmployeeProvider extends ChangeNotifier {
   // مهم جداً: ننتظر اكتمال التحميل قبل السماح بأي إضافة أو تعديل.
   // هذا يمنع أن يتم استيراد الموظفين ثم يقوم التحميل القديم بمسحهم.
   // ------------------------------------------------------------
+  Future<void> reloadFromStorage() async {
+    await _loadEmployeesFromStorage();
+  }
+
   Future<void> _loadEmployeesFromStorage() async {
     try {
       final prefs = await SharedPreferences.getInstance();

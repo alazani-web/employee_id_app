@@ -1,0 +1,210 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'screens/home_screen.dart';
+import 'screens/employees_screen.dart';
+import 'screens/visits_screen.dart';
+import 'screens/documents_screen.dart';
+import 'screens/reports_screen.dart';
+import 'screens/settings_screen.dart';
+
+import 'widgets/app_header.dart';
+import 'widgets/bottom_navigation.dart';
+import 'widgets/side_menu.dart';
+import 'package:provider/provider.dart';
+import 'providers/alert_provider.dart';
+
+class App extends StatefulWidget {
+  const App({super.key});
+
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  // المفتاح الخاص بالـ Scaffold
+  final GlobalKey<ScaffoldState> scaffoldKey =
+      GlobalKey<ScaffoldState>();
+
+  String currentPage = "home";
+
+  // مفتاح الـ Navigator الداخلي الخاص بالصفحات.
+  // يبقى ثابتًا حتى لا يتم إنشاء Navigator جديد عند تغيير الصفحة.
+  final GlobalKey<NavigatorState> pageNavigatorKey =
+      GlobalKey<NavigatorState>();
+
+
+  // =====================================================
+  // الصفحة الحالية
+  // =====================================================
+
+  Widget getCurrentPage() {
+    switch (currentPage) {
+      case "home":
+        return const HomeScreen();
+
+      case "employees":
+        return const EmployeesScreen();
+
+      case "visits":
+        return const VisitsScreen();
+
+      case "documents":
+        return const DocumentsScreen();
+
+      case "reports":
+        return const ReportsScreen();
+
+      // صفحات الإعدادات
+      case "settings":
+      case "backup":
+      case "activation":
+      case "lock":
+      case "alerts":
+      case "tasks":
+      case "about":
+        return SettingsScreen(
+          selectedPage: currentPage,
+        );
+
+      default:
+        return const HomeScreen();
+    }
+  }
+
+  // =====================================================
+  // التنقل
+  // =====================================================
+
+  void navigate(String page) {
+    // مهم: لا نعتمد على currentPage لمعرفة الصفحة المعروضة فعليًا،
+    // لأن الصفحة قد تكون فُتحت من داخل HomeScreen باستخدام Navigator.push.
+    // لذلك يجب تنفيذ الانتقال في كل ضغطة على الشريط السفلي.
+    setState(() {
+      currentPage = page;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || pageNavigatorKey.currentState == null) return;
+
+      pageNavigatorKey.currentState!.pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => getCurrentPage(),
+        ),
+        (route) => false,
+      );
+    });
+  }
+
+  // =====================================================
+  // الشريط السفلي
+  // =====================================================
+
+  int getCurrentIndex() {
+    switch (currentPage) {
+      case "employees":
+        return 1;
+
+      case "visits":
+        return 2;
+
+      case "documents":
+        return 3;
+
+      case "reports":
+        return 4;
+
+      case "home":
+      default:
+        return 0;
+    }
+  }
+
+  // =====================================================
+  // بناء التطبيق
+  // =====================================================
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+
+      title: "نظام إدارة الهويات",
+
+      theme: ThemeData(
+        useMaterial3: true,
+        fontFamily: "Arial",
+      ),
+
+      home: Scaffold(
+        key: scaffoldKey,
+
+        // =================================================
+        // تم التغيير إلى drawer لفتح القائمة من اليسار
+        // =================================================
+
+        drawer: SideMenu(
+          onNavigate: navigate,
+        ),
+
+        // =================================================
+        // محتوى التطبيق
+        // =================================================
+
+        body: Column(
+          children: [
+
+            // الهيدر
+            AppHeader(
+              alertCount: context.watch<AlertProvider>().alertCount,
+
+              // تم التغيير إلى openDrawer للفتح من اليسار
+              onMenuTap: () {
+                scaffoldKey.currentState?.openDrawer();
+              },
+            ),
+
+            // الصفحة
+            Expanded(
+              child: Navigator(
+                key: pageNavigatorKey,
+                onGenerateRoute: (_) => MaterialPageRoute(
+                  builder: (_) => const HomeScreen(),
+                ),
+              ),
+            ),
+
+            // الشريط السفلي
+            BottomNavigation(
+              currentIndex: getCurrentIndex(),
+
+              onTap: (index) {
+                switch (index) {
+                  case 0:
+                    navigate("home");
+                    break;
+
+                  case 1:
+                    navigate("employees");
+                    break;
+
+                  case 2:
+                    navigate("visits");
+                    break;
+
+                  case 3:
+                    navigate("documents");
+                    break;
+
+                  case 4:
+                    navigate("reports");
+                    break;
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

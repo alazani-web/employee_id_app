@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'activation_screen.dart';
 import 'backup_screen.dart';
+import '../widgets/top_message.dart';
+import '../services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String selectedPage;
@@ -30,7 +33,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool visitNotifications = true;
   bool taskNotifications = true;
 
-  bool isLockEnabled = true;
+  bool isLockEnabled = false;
   bool faceIdEnabled = false;
 
   int notificationDays = 30;
@@ -55,6 +58,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     currentPage = widget.selectedPage;
+    _loadSavedSettings();
+  }
+
+  Future<void> _loadSavedSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+
+    setState(() {
+      isLockEnabled = prefs.getBool('app_lock_enabled') ?? false;
+      faceIdEnabled = prefs.getBool('app_lock_biometric') ?? false;
+      notificationsEnabled =
+          prefs.getBool('notifications_enabled') ?? true;
+      identityNotifications =
+          prefs.getBool('identity_notifications') ?? true;
+      documentNotifications =
+          prefs.getBool('document_notifications') ?? true;
+      visitNotifications =
+          prefs.getBool('visit_notifications') ?? true;
+      taskNotifications =
+          prefs.getBool('task_notifications') ?? true;
+    });
   }
 
   @override
@@ -85,9 +109,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
             16,
-            12,
+            8,
             16,
-            100,
+            32,
           ),
           child: Column(
             children: [
@@ -426,13 +450,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 12),
 
             _buildSwitchRow(
-              title: "استخدام بصمة الوجه",
-              value: faceIdEnabled,
-              onChanged: (value) {
-                setState(() {
-                  faceIdEnabled = value;
-                });
-              },
+              title: "استخدام بصمة الوجه (قريبًا)",
+              value: false,
+              enabled: false,
+              onChanged: (_) {},
             ),
 
             const SizedBox(height: 18),
@@ -661,6 +682,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: _saveNotificationSettings,
             ),
 
+            const SizedBox(height: 9),
+
+            SizedBox(
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  try {
+                    await NotificationService.instance
+                        .showTestNotification();
+                    if (!mounted) return;
+                    TopMessage.show(
+                      context,
+                      "تم إرسال إشعار الاختبار",
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    TopMessage.show(
+                      context,
+                      "تعذر إرسال إشعار الاختبار",
+                      type: TopMessageType.error,
+                    );
+                  }
+                },
+                icon: const Icon(
+                  Icons.notifications_active_outlined,
+                  size: 18,
+                ),
+                label: const Text(
+                  "اختبار الإشعار الآن",
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xff2864D7),
+                  side: const BorderSide(
+                    color: Color(0xffC9D8F5),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+
             if (_notificationSaveMessage != null) ...[
               const SizedBox(height: 8),
               AnimatedSwitcher(
@@ -837,13 +901,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     required bool value,
     required ValueChanged<bool> onChanged,
+    bool enabled = true,
   }) {
     return Row(
       children: [
         Switch(
           value: value,
           activeColor: const Color(0xff2864D7),
-          onChanged: onChanged,
+          onChanged: enabled ? onChanged : null,
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -1547,7 +1612,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _saveNotificationSettings() {
+  Future<void> _saveNotificationSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', notificationsEnabled);
+    await prefs.setBool('identity_notifications', identityNotifications);
+    await prefs.setBool('document_notifications', documentNotifications);
+    await prefs.setBool('visit_notifications', visitNotifications);
+    await prefs.setBool('task_notifications', taskNotifications);
+
+    if (!notificationsEnabled) {
+      await NotificationService.instance.cancelAll();
+    } else {
+      await NotificationService.instance.syncStoredData();
+    }
+
     setState(() {
       _notificationSaveMessage = "تم حفظ إعدادات الإشعارات";
     });
@@ -1562,34 +1640,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  void _saveLockSettings() {
-    if (isLockEnabled) {
-      if (pinController.text.isEmpty) {
-        _showMessage("أدخل الرقم السري أولاً");
-        return;
-      }
+  Future<void> _saveLockSettings() async {
+    final prefs = await SharedPreferences.getInstance();
 
-      if (pinController.text != confirmPinController.text) {
-        _showMessage("الرقم السري غير متطابق");
-        return;
-      }
+    if (!isLockEnabled) {
+      await prefs.setBool('app_lock_enabled', false);
+      await prefs.remove('app_lock_pin');
+      await prefs.setBool('app_lock_biometric', false);
+      _showMessage("تم إيقاف قفل التطبيق");
+      return;
     }
 
-    _showMessage("تم حفظ إعدادات القفل");
+    final pin = pinController.text.trim();
+    final confirm = confirmPinController.text.trim();
+
+    if (pin.length < 4) {
+      _showMessage(
+        "الرقم السري يجب أن يتكون من 4 أرقام على الأقل",
+        type: TopMessageType.error,
+      );
+      return;
+    }
+
+    if (pin != confirm) {
+      _showMessage(
+        "الرقم السري غير متطابق",
+        type: TopMessageType.error,
+      );
+      return;
+    }
+
+    await prefs.setBool('app_lock_enabled', true);
+    await prefs.setString('app_lock_pin', pin);
+    await prefs.setBool('app_lock_biometric', faceIdEnabled);
+
+    _showMessage("تم حفظ إعدادات القفل بنجاح");
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          textAlign: TextAlign.right,
-        ),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  void _showMessage(
+    String message, {
+    TopMessageType type = TopMessageType.success,
+  }) {
+    TopMessage.show(context, message, type: type);
   }
 }

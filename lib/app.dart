@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/employees_screen.dart';
@@ -11,7 +12,7 @@ import 'screens/settings_screen.dart';
 import 'widgets/app_header.dart';
 import 'widgets/bottom_navigation.dart';
 import 'widgets/side_menu.dart';
-import 'package:provider/provider.dart';
+import 'widgets/app_lock_screen.dart';
 import 'providers/alert_provider.dart';
 
 class App extends StatefulWidget {
@@ -21,190 +22,180 @@ class App extends StatefulWidget {
   State<App> createState() => _AppState();
 }
 
-class _AppState extends State<App> {
-  // المفتاح الخاص بالـ Scaffold
-  final GlobalKey<ScaffoldState> scaffoldKey =
-      GlobalKey<ScaffoldState>();
+class _AppState extends State<App> with WidgetsBindingObserver {
+  final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
-  String currentPage = "home";
+  String currentPage = 'home';
 
-  // مفتاح الـ Navigator الداخلي الخاص بالصفحات.
-  // يبقى ثابتًا حتى لا يتم إنشاء Navigator جديد عند تغيير الصفحة.
-  final GlobalKey<NavigatorState> pageNavigatorKey =
-      GlobalKey<NavigatorState>();
+  // نحتفظ بالصفحات الرئيسية داخل IndexedStack حتى لا يعاد بناؤها
+  // عند كل انتقال، وبالتالي لا يحدث اهتزاز أو انتقال بصري غير مرغوب.
+  final List<Widget> _mainPages = const [
+    HomeScreen(),
+    EmployeesScreen(),
+    VisitsScreen(),
+    DocumentsScreen(),
+    ReportsScreen(),
+  ];
 
+  bool _lockEnabled = false;
+  bool _isLocked = false;
+  bool _loadingLock = true;
 
-  // =====================================================
-  // الصفحة الحالية
-  // =====================================================
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _loadLockState();
+  }
 
-  Widget getCurrentPage() {
-    switch (currentPage) {
-      case "home":
-        return const HomeScreen();
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
-      case "employees":
-        return const EmployeesScreen();
+  Future<void> _loadLockState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('app_lock_enabled') ?? false;
+    final pin = prefs.getString('app_lock_pin') ?? '';
 
-      case "visits":
-        return const VisitsScreen();
+    if (!mounted) return;
 
-      case "documents":
-        return const DocumentsScreen();
+    setState(() {
+      _lockEnabled = enabled && pin.isNotEmpty;
+      _isLocked = enabled && pin.isNotEmpty;
+      _loadingLock = false;
+    });
+  }
 
-      case "reports":
-        return const ReportsScreen();
-
-      // صفحات الإعدادات
-      case "settings":
-      case "backup":
-      case "activation":
-      case "lock":
-      case "alerts":
-      case "tasks":
-      case "about":
-        return SettingsScreen(
-          selectedPage: currentPage,
-        );
-
-      default:
-        return const HomeScreen();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _refreshLockForBackground();
     }
   }
 
-  // =====================================================
-  // التنقل
-  // =====================================================
+  Future<void> _refreshLockForBackground() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('app_lock_enabled') ?? false;
+    final pin = prefs.getString('app_lock_pin') ?? '';
 
-  void navigate(String page) {
-    // مهم: لا نعتمد على currentPage لمعرفة الصفحة المعروضة فعليًا،
-    // لأن الصفحة قد تكون فُتحت من داخل HomeScreen باستخدام Navigator.push.
-    // لذلك يجب تنفيذ الانتقال في كل ضغطة على الشريط السفلي.
+    if (!mounted) return;
+
     setState(() {
-      currentPage = page;
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || pageNavigatorKey.currentState == null) return;
-
-      pageNavigatorKey.currentState!.pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => getCurrentPage(),
-        ),
-        (route) => false,
-      );
+      _lockEnabled = enabled && pin.isNotEmpty;
+      if (_lockEnabled) {
+        _isLocked = true;
+      }
     });
   }
 
-  // =====================================================
-  // الشريط السفلي
-  // =====================================================
+  Future<bool> _verifyPin(String pin) async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString('app_lock_pin') ?? '';
+
+    if (pin == saved) {
+      if (mounted) {
+        setState(() => _isLocked = false);
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  void navigate(String page) {
+    if (!mounted) return;
+
+    scaffoldKey.currentState?.closeDrawer();
+
+    // لا نستخدم Navigator.push عند تغيير تبويب رئيسي.
+    // مجرد تغيير index داخل IndexedStack يمنع حركة الصفحة والاهتزاز.
+    setState(() {
+      currentPage = page;
+    });
+  }
 
   int getCurrentIndex() {
     switch (currentPage) {
-      case "employees":
+      case 'employees':
         return 1;
-
-      case "visits":
+      case 'visits':
         return 2;
-
-      case "documents":
+      case 'documents':
         return 3;
-
-      case "reports":
+      case 'reports':
         return 4;
-
-      case "home":
       default:
         return 0;
     }
   }
 
-  // =====================================================
-  // بناء التطبيق
-  // =====================================================
+  bool get _isMainPage =>
+      currentPage == 'home' ||
+      currentPage == 'employees' ||
+      currentPage == 'visits' ||
+      currentPage == 'documents' ||
+      currentPage == 'reports';
+
+  Widget _buildPage() {
+    if (!_isMainPage) {
+      return SettingsScreen(selectedPage: currentPage);
+    }
+
+    return IndexedStack(
+      index: getCurrentIndex(),
+      children: _mainPages,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
+    if (_loadingLock) {
+      return const Material(
+        color: Color(0xffF7F9FC),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-      title: "نظام إدارة الهويات",
-
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: "Arial",
-      ),
-
-      home: Scaffold(
-        key: scaffoldKey,
-
-        // =================================================
-        // تم التغيير إلى drawer لفتح القائمة من اليسار
-        // =================================================
-
-        drawer: SideMenu(
-          onNavigate: navigate,
-        ),
-
-        // =================================================
-        // محتوى التطبيق
-        // =================================================
-
-        body: Column(
-          children: [
-
-            // الهيدر
-            AppHeader(
-              alertCount: context.watch<AlertProvider>().alertCount,
-
-              // تم التغيير إلى openDrawer للفتح من اليسار
-              onMenuTap: () {
-                scaffoldKey.currentState?.openDrawer();
-              },
-            ),
-
-            // الصفحة
-            Expanded(
-              child: Navigator(
-                key: pageNavigatorKey,
-                onGenerateRoute: (_) => MaterialPageRoute(
-                  builder: (_) => const HomeScreen(),
-                ),
+    return Stack(
+      children: [
+        Scaffold(
+          key: scaffoldKey,
+          drawer: SideMenu(onNavigate: navigate),
+          body: Column(
+            children: [
+              AppHeader(
+                alertCount: context.watch<AlertProvider>().alertCount,
+                onMenuTap: () => scaffoldKey.currentState?.openDrawer(),
               ),
-            ),
-
-            // الشريط السفلي
-            BottomNavigation(
-              currentIndex: getCurrentIndex(),
-
-              onTap: (index) {
-                switch (index) {
-                  case 0:
-                    navigate("home");
-                    break;
-
-                  case 1:
-                    navigate("employees");
-                    break;
-
-                  case 2:
-                    navigate("visits");
-                    break;
-
-                  case 3:
-                    navigate("documents");
-                    break;
-
-                  case 4:
-                    navigate("reports");
-                    break;
-                }
-              },
-            ),
-          ],
+              Expanded(child: _buildPage()),
+              if (_isMainPage)
+                SizedBox(
+                  height: 64,
+                  child: BottomNavigation(
+                    currentIndex: getCurrentIndex(),
+                    onTap: (index) {
+                      const pages = [
+                        'home',
+                        'employees',
+                        'visits',
+                        'documents',
+                        'reports',
+                      ];
+                      navigate(pages[index]);
+                    },
+                  ),
+                ),
+            ],
+          ),
         ),
-      ),
+        if (_isLocked)
+          AppLockScreen(
+            onUnlock: _verifyPin,
+          ),
+      ],
     );
   }
 }

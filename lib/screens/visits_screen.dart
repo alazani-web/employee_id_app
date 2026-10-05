@@ -17,6 +17,8 @@ import '../widgets/confirm_delete_dialog.dart';
 import '../widgets/action_result_dialog.dart';
 import '../widgets/renewal_dialog.dart';
 import '../utils/family_visit_calculator.dart';
+import '../services/import_service.dart';
+import 'import_screen.dart';
 
 class VisitsScreen extends StatefulWidget {
   const VisitsScreen({super.key});
@@ -397,9 +399,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
     return Material(
       color: Colors.white,
       child: InkWell(
-        // لا تظهر قائمة إجراءات الزيارة إلا بالضغط المطول.
-        onTap: () {},
-        onLongPress: () => _showActions(context, visit),
+        onTap: () => _showActions(context, visit),
         child: Directionality(
           textDirection: TextDirection.ltr,
           child: Container(
@@ -1731,243 +1731,17 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
 
   Future<void> _showImportDialog(BuildContext context) async {
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      barrierColor: Colors.black54,
-      builder: (dialogContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: Dialog(
-            backgroundColor: Colors.white,
-            elevation: 10,
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 28,
-              vertical: 20,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: 520,
-                maxHeight: MediaQuery.sizeOf(context).height * .82,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 14, 14, 12),
-                    child: Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'استيراد الزيارات العائلية',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: dark,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          icon: const Icon(
-                            Icons.close,
-                            color: Color(0xFF9AA2AD),
-                            size: 21,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: Color(0xFFE7E7EA),
-                  ),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
-                      child: Column(
-                        children: [
-                          const Text(
-                            'قم بتحميل ملف Excel أو CSV يحتوي على بيانات\nالزيارات العائلية',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Color(0xFF7D8794),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                              height: 1.55,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-
-                          // تحميل القالب
-                          SizedBox(
-                            height: 44,
-                            child: TextButton.icon(
-                              onPressed: () =>
-                                  _downloadVisitTemplate(context),
-                              style: TextButton.styleFrom(
-                                backgroundColor: const Color(0xFFF7F3FC),
-                                foregroundColor: purple,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(13),
-                                ),
-                              ),
-                              icon: const Icon(
-                                Icons.download_rounded,
-                                size: 19,
-                              ),
-                              label: const Text(
-                                'تحميل قالب Excel للزيارات العائلية',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          // منطقة الرفع
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 24,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(
-                                color: const Color(0xFFE2E5EA),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(
-                                  Icons.file_upload_outlined,
-                                  color: Color(0xFFA4ACB8),
-                                  size: 42,
-                                ),
-                                const SizedBox(height: 10),
-                                const Text(
-                                  'اسحب وأفلت ملف الزيارات هنا',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: dark,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'أو',
-                                  style: TextStyle(
-                                    color: Color(0xFF7D8794),
-                                    fontSize: 11,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                SizedBox(
-                                  height: 44,
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      Navigator.pop(dialogContext);
-                                      _importVisits(context);
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: purple,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 20,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(16),
-                                      ),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.description_outlined,
-                                      size: 18,
-                                    ),
-                                    label: const Text(
-                                      'اختر ملف',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 14),
-
-                          // متطلبات الملف
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.fromLTRB(
-                              14,
-                              14,
-                              14,
-                              16,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF7F3FC),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: const Color(0xFFEAE2F5),
-                              ),
-                            ),
-                            child: const Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'متطلبات ملف الزيارات العائلية:',
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    color: Color(0xFF6F2CA8),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                SizedBox(height: 10),
-                                Text(
-                                  '• اسم الزائر، رقم التأشيرة، رقم الحدود، رقم الجواز\n'
-                                  '• تاريخ انتهاء الزيارة وتاريخ انتهاء التأمين',
-                                  textAlign: TextAlign.right,
-                                  style: TextStyle(
-                                    color: Color(0xFF6F2CA8),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w400,
-                                    height: 1.8,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ImportScreen(
+          mode: ImportMode.visits,
+          templateDescription:
+              'يجب أن يحتوي الملف على اسم الزائر، رقم الجواز، رقم التأشيرة، رقم الحدود، وتواريخ انتهاء الزيارة والتأمين.',
+          onDownloadTemplate: () => _downloadVisitTemplate(context),
+          onVisitImport: (screenContext, file, onProgress) =>
+              _importVisits(screenContext, file, onProgress),
+        ),
+      ),
     );
   }
 
@@ -2114,32 +1888,36 @@ class _VisitsScreenState extends State<VisitsScreen> {
     );
   }
 
-  Future<void> _importVisits(BuildContext context) async {
+  Future<VisitImportResult> _importVisits(BuildContext context, PlatformFile file, ImportProgressCallback onProgress) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['xlsx', 'csv'],
-        withData: true,
-      );
-
-      if (result == null || result.files.isEmpty) return;
-
-      final file = result.files.first;
       final bytes = file.bytes;
       if (bytes == null || bytes.isEmpty) {
-        if (!context.mounted) return;
-        _showNotice(
-          context,
-          title: 'تعذر قراءة الملف',
-          message: 'لم يتمكن التطبيق من قراءة محتوى الملف.',
-          type: _NoticeType.error,
-        );
-        return;
+        throw Exception('لم يتمكن التطبيق من قراءة محتوى الملف.');
       }
+
+      onProgress(const ImportProgress(progress: .05, stage: 'قراءة الملف'));
+      await Future<void>.delayed(const Duration(milliseconds: 450));
 
       final imported = <Visit>[];
       int invalidRows = 0;
+      int totalRows = 0;
+      int processedRows = 0;
       final fileName = file.name.toLowerCase();
+
+      void reportParsingProgress() {
+        processedRows++;
+        final ratio = totalRows <= 0 ? 0.0 : (processedRows / totalRows).clamp(0.0, 1.0).toDouble();
+        if (processedRows == 1 || processedRows % 20 == 0 || processedRows == totalRows) {
+          onProgress(ImportProgress(
+            progress: 0.10 + (ratio * 0.48),
+            stage: 'تحليل البيانات',
+            processed: processedRows,
+            total: totalRows,
+            imported: imported.length,
+            skipped: invalidRows,
+          ));
+        }
+      }
 
       void addRowFromColumns(
         List<String> columns,
@@ -2245,6 +2023,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
           final hasHeader = map.values.any((i) => i >= 0);
           final startRow = hasHeader ? 1 : 0;
+          totalRows += (sheet.maxRows - startRow).clamp(0, sheet.maxRows).toInt();
 
           for (int rowIndex = startRow; rowIndex < sheet.maxRows; rowIndex++) {
             final row = sheet.rows[rowIndex];
@@ -2263,6 +2042,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                     }
                   : null,
             );
+            reportParsingProgress();
           }
         }
       } else if (fileName.endsWith('.csv')) {
@@ -2306,6 +2086,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
 
           final hasHeader = map.values.any((i) => i >= 0);
           final startRow = hasHeader ? 1 : 0;
+          totalRows += (lines.length - startRow).clamp(0, lines.length).toInt();
           for (int rowIndex = startRow; rowIndex < lines.length; rowIndex++) {
             final columns = _parseCsvLine(lines[rowIndex], delimiter: delimiter);
             if (columns.isEmpty) continue;
@@ -2319,50 +2100,60 @@ class _VisitsScreenState extends State<VisitsScreen> {
                     }
                   : null,
             );
+            reportParsingProgress();
           }
         }
       }
 
+      onProgress(ImportProgress(
+        progress: .64,
+        stage: 'التحقق من التكرار',
+        processed: totalRows,
+        total: totalRows,
+        imported: imported.length,
+        skipped: invalidRows,
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 650));
+
       if (imported.isEmpty) {
-        if (!context.mounted) return;
-        _showNotice(
-          context,
-          title: 'لم يتم الاستيراد',
-          message: 'لم يتم العثور على صفوف صالحة في الملف.',
-          type: _NoticeType.warning,
-        );
-        return;
+        throw Exception('لم يتم العثور على صفوف صالحة في الملف.');
       }
 
       final provider = context.read<VisitProvider>();
+      onProgress(ImportProgress(
+        progress: .78,
+        stage: 'إضافة الزيارات',
+        processed: totalRows,
+        total: totalRows,
+        imported: 0,
+        skipped: invalidRows,
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 550));
+
       final added = await provider.addVisitsBatch(imported);
-      final skipped = imported.length - added;
+      final duplicateCount = imported.length - added;
+      final rejected = duplicateCount + invalidRows;
 
-      if (!context.mounted) return;
+      onProgress(ImportProgress(
+        progress: 1,
+        stage: 'اكتمل الاستيراد',
+        processed: totalRows,
+        total: totalRows,
+        imported: added,
+        skipped: rejected,
+      ));
+      await Future<void>.delayed(const Duration(milliseconds: 900));
 
-      final details = <String>[];
-      if (added > 0) details.add('تمت إضافة $added زيارة');
-      if (skipped > 0) details.add('تم تجاهل $skipped زيارة مكررة');
-      if (invalidRows > 0) details.add('تم تجاهل $invalidRows صف غير صالح');
-
-      _showNotice(
-        context,
-        title: added > 0 ? 'تم الاستيراد بنجاح' : 'لم تتم إضافة زيارات',
-        message: details.isEmpty
-            ? 'لم يتم العثور على بيانات جديدة.'
-            : details.join(' • '),
-        type: added > 0 ? _NoticeType.success : _NoticeType.warning,
+      return VisitImportResult(
+        fileName: file.name,
+        totalRecords: totalRows,
+        importedCount: added,
+        rejectedCount: rejected,
       );
     } catch (e, stackTrace) {
       debugPrint('VISIT IMPORT ERROR: $e');
       debugPrint(stackTrace.toString());
-      if (!context.mounted) return;
-      _showNotice(
-        context,
-        title: 'خطأ في الاستيراد',
-        message: 'حدث خطأ أثناء قراءة الملف:\n$e',
-        type: _NoticeType.error,
-      );
+      rethrow;
     }
   }
 

@@ -522,7 +522,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                         final statusData = _getCalculatedStatus(emp.expiryDate);
 
                         return InkWell(
-                          onLongPress: () => _showEmployeeActionsModal(context, emp),
+                          onTap: () => _showEmployeeActionsModal(context, emp),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               vertical: 12,
@@ -1279,7 +1279,7 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     if (result == null || !mounted) return;
 
     // حفظ التجديد مباشرة بعد ضغط "تأكيد التجديد".
-    Provider.of<EmployeeProvider>(
+    await Provider.of<EmployeeProvider>(
       context,
       listen: false,
     ).renewEmployeeId(emp.id, result.formattedDate);

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/visit.dart';
+import '../services/notification_service.dart';
+import '../utils/renewal_calculator.dart';
 
 class VisitProvider extends ChangeNotifier {
   static const String _storageKey = 'saved_visits';
@@ -40,6 +42,31 @@ class VisitProvider extends ChangeNotifier {
 
   List<Visit> get visits => List.unmodifiable(_visits);
   int get visitCount => _visits.length;
+
+  Future<void> _syncVisitNotifications(Visit visit) async {
+    try {
+      final visitExpiry = RenewalCalculator.parseDate(visit.expiryDate);
+      if (visitExpiry != null && visit.id.isNotEmpty) {
+        await NotificationService.instance.scheduleVisit(
+          visitId: visit.id,
+          visitName: visit.visitorName,
+          visitDate: visitExpiry,
+        );
+      }
+
+      final insuranceExpiry =
+          RenewalCalculator.parseDate(visit.insuranceExpiryDate);
+      if (insuranceExpiry != null && visit.id.isNotEmpty) {
+        await NotificationService.instance.scheduleInsurance(
+          insuranceId: visit.id,
+          insuranceName: visit.visitorName,
+          expiryDate: insuranceExpiry,
+        );
+      }
+    } catch (e) {
+      debugPrint('Visit notification error: $e');
+    }
+  }
 
   Future<void> addVisit(Visit visit) async {
     await _initialization;
@@ -85,6 +112,7 @@ class VisitProvider extends ChangeNotifier {
     _visits.add(visit);
     notifyListeners();
     await _saveVisits();
+    await _syncVisitNotifications(visit);
   }
 
   Future<int> addVisitsBatch(List<Visit> newVisits) async {
@@ -157,6 +185,11 @@ class VisitProvider extends ChangeNotifier {
     if (added > 0) {
       notifyListeners();
       await _saveVisits();
+      for (final visit in newVisits) {
+        if (_visits.any((item) => item.id == visit.id)) {
+          await _syncVisitNotifications(visit);
+        }
+      }
     }
 
     return added;
@@ -174,6 +207,7 @@ class VisitProvider extends ChangeNotifier {
     _visits[index] = updatedVisit;
     notifyListeners();
     await _saveVisits();
+    await _syncVisitNotifications(updatedVisit);
   }
 
   Future<void> renewVisit(
@@ -214,6 +248,7 @@ class VisitProvider extends ChangeNotifier {
 
     notifyListeners();
     await _saveVisits();
+    await _syncVisitNotifications(_visits[index]);
   }
 
   Future<void> removeVisit(String id) async {
@@ -223,6 +258,17 @@ class VisitProvider extends ChangeNotifier {
     _visits.removeWhere((v) => v.id == id);
 
     if (_visits.length == oldLength) return;
+
+    try {
+      await NotificationService.instance.cancelItemNotifications(
+        type: NotificationType.visit,
+        itemId: id,
+      );
+      await NotificationService.instance.cancelItemNotifications(
+        type: NotificationType.insurance,
+        itemId: id,
+      );
+    } catch (_) {}
 
     notifyListeners();
     await _saveVisits();
@@ -241,6 +287,10 @@ class VisitProvider extends ChangeNotifier {
         .map((visit) => jsonEncode(visit.toJson()))
         .toList();
     await prefs.setStringList(_storageKey, encoded);
+  }
+
+  Future<void> reloadFromStorage() async {
+    await _loadVisits();
   }
 
   Future<void> _loadVisits() async {
@@ -266,6 +316,7 @@ class VisitProvider extends ChangeNotifier {
           }
         }
       }
+
     } catch (e, stackTrace) {
       debugPrint('Visit storage error: $e');
       debugPrint(stackTrace.toString());

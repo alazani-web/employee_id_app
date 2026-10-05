@@ -1,28 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
-import 'firebase_options.dart';
+import 'app.dart';
 import 'providers/employee_provider.dart';
 import 'providers/visit_provider.dart';
 import 'providers/alert_provider.dart';
-import 'app.dart';
+import 'services/notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // تهيئة نظام الإشعارات قبل تشغيل التطبيق.
+  await NotificationService.instance.initialize();
+
+  // إعادة جدولة التنبيهات الموجودة في البيانات المحلية.
+  // أي إشعار تم إنشاؤه سابقًا لا يعتمد على فتح صفحة معينة.
+  try {
+    await NotificationService.instance.syncStoredData();
+  } catch (_) {
+    // لا نمنع تشغيل التطبيق إذا تعذر نظام الإشعارات.
+  }
 
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
+        ChangeNotifierProvider<EmployeeProvider>(
           create: (_) => EmployeeProvider(),
         ),
-        ChangeNotifierProvider(
+        ChangeNotifierProvider<VisitProvider>(
           create: (_) => VisitProvider(),
         ),
         ChangeNotifierProvider<AlertProvider>(
@@ -46,16 +52,17 @@ class MainApp extends StatelessWidget {
       title: 'نظام إدارة الهويات',
       debugShowCheckedModeBanner: false,
 
-      // إعدادات دعم اللغة العربية واتجاه النص (RTL) للتقويم والواجهات
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+
       supportedLocales: const [
         Locale('ar', 'SA'),
         Locale('en', 'US'),
       ],
+
       locale: const Locale('ar', 'SA'),
 
       theme: ThemeData(

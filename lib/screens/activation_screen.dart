@@ -214,7 +214,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
       child: Container(
         color: _pageBg,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

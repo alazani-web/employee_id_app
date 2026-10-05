@@ -1,209 +1,74 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-
 class BottomNavigation extends StatelessWidget {
-
   final int currentIndex;
-  final Function(int) onTap;
-
+  final ValueChanged<int> onTap;
 
   const BottomNavigation({
-
     super.key,
-
     required this.currentIndex,
-
     required this.onTap,
-
   });
-
-
 
   @override
   Widget build(BuildContext context) {
-
     return Directionality(
-
       textDirection: TextDirection.rtl,
-
       child: Container(
-
-        decoration: BoxDecoration(
-
+        height: 64,
+        decoration: const BoxDecoration(
           color: Colors.white,
-
-          borderRadius: const BorderRadius.only(
-
-            topLeft: Radius.circular(25),
-
-            topRight: Radius.circular(25),
-
+          border: Border(
+            top: BorderSide(color: Color(0xffEEF1F5)),
           ),
-
-          boxShadow: [
-
-            BoxShadow(
-
-              color: Colors.black.withOpacity(0.05),
-
-              blurRadius: 10,
-
-              offset: const Offset(0,-3),
-
-            ),
-
-          ],
-
         ),
-
-
         child: BottomNavigationBar(
-
           currentIndex: currentIndex,
-
           onTap: onTap,
-
           type: BottomNavigationBarType.fixed,
-
-          backgroundColor: Colors.transparent,
-
+          backgroundColor: Colors.white,
           elevation: 0,
-
-
-          selectedItemColor: const Color(0xff2864D7),
-
-          unselectedItemColor: const Color(0xff7A8495),
-
-
-
+          selectedItemColor: Color(0xff2864D7),
+          unselectedItemColor: Color(0xff7A8495),
+          selectedFontSize: 10,
+          unselectedFontSize: 10,
+          iconSize: 21,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
           items: [
-
-
-            BottomNavigationBarItem(
-
-              icon: iconSvg(
-                "assets/icons/home.svg",
-                false,
-              ),
-
-              activeIcon: iconSvg(
-                "assets/icons/home.svg",
-                true,
-              ),
-
-              label: "الرئيسية",
-
-            ),
-
-
-
-            BottomNavigationBarItem(
-
-              icon: iconSvg(
-                "assets/icons/users.svg",
-                false,
-              ),
-
-              activeIcon: iconSvg(
-                "assets/icons/users.svg",
-                true,
-              ),
-
-              label: "الموظفين",
-
-            ),
-
-
-
-
-            BottomNavigationBarItem(
-
-              icon: iconSvg(
-                "assets/icons/plane.svg",
-                false,
-              ),
-
-              activeIcon: iconSvg(
-                "assets/icons/plane.svg",
-                true,
-              ),
-
-              label: "الزيارات",
-
-            ),
-
-
-
-
-
-            BottomNavigationBarItem(
-
-              icon: iconSvg(
-                "assets/icons/folder_open.svg",
-                false,
-              ),
-
-              activeIcon: iconSvg(
-                "assets/icons/folder_open.svg",
-                true,
-              ),
-
-              label: "الوثائق",
-
-            ),
-
-
-
-
+            _item('assets/icons/home.svg', 'الرئيسية'),
+            _item('assets/icons/users.svg', 'الموظفين'),
+            _item('assets/icons/plane.svg', 'الزيارات'),
+            _item('assets/icons/folder_open.svg', 'الوثائق'),
             const BottomNavigationBarItem(
-
-              icon: Icon(Icons.description_outlined),
-
-              activeIcon: Icon(Icons.description),
-
-              label: "التقارير",
-
+              icon: Icon(Icons.description_outlined, size: 21),
+              activeIcon: Icon(Icons.description, size: 21),
+              label: 'التقارير',
             ),
-
-
           ],
-
         ),
-
       ),
-
     );
-
   }
 
+  BottomNavigationBarItem _item(String path, String label) {
+    return BottomNavigationBarItem(
+      icon: _iconSvg(path, false),
+      activeIcon: _iconSvg(path, true),
+      label: label,
+    );
+  }
 
-
-  Widget iconSvg(String path, bool active) {
-
+  Widget _iconSvg(String path, bool active) {
     return SvgPicture.asset(
-
       path,
-
-      width: 24,
-
-      height: 24,
-
-
+      width: 21,
+      height: 21,
       colorFilter: ColorFilter.mode(
-
-        active
-
-            ? const Color(0xff2864D7)
-
-            : const Color(0xff7A8495),
-
+        active ? const Color(0xff2864D7) : const Color(0xff7A8495),
         BlendMode.srcIn,
-
       ),
-
     );
-
   }
-
 }

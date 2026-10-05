@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../widgets/app_date_picker.dart';
 import '../widgets/confirm_delete_dialog.dart';
 import '../providers/alert_provider.dart';
+import '../services/notification_service.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -118,6 +119,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
   Future<void> _saveDocumentsAndRefreshAlerts() async {
     await _saveDocuments();
+    await NotificationService.instance.syncStoredData();
     if (!mounted) return;
     await context.read<AlertProvider>().refreshDocuments();
   }
@@ -2253,7 +2255,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
     return InkWell(
       // فتح إجراءات الوثيقة بالضغط المطول فقط.
-      onLongPress: () => _showDocumentActions(context, document),
+      onTap: () => _showDocumentActions(context, document),
       child: Container(
         constraints: const BoxConstraints(minHeight: 82),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
