@@ -1,4 +1,7 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:excel/excel.dart' as excel_pkg;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -174,9 +177,9 @@ class _ImportScreenState extends State<ImportScreen> {
   Widget _buildSelect() {
     return Column(
       children: [
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         SizedBox(
-          height: 170,
+          height: 150,
           width: double.infinity,
           child: Image.asset(
             'assets/icons/import_employees_hero.png',
@@ -194,24 +197,24 @@ class _ImportScreenState extends State<ImportScreen> {
         const Text(
           'يمكنك استيراد بيانات الموظفين من ملف Excel بسهولة وسرعة\nيرجى استخدام النموذج المرفق لضمان توافق البيانات',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 11.5, height: 1.55, color: Color(0xff64748B)),
+          style: TextStyle(fontSize: 10.5, height: 1.5, color: Color(0xff64748B)),
         ),
-        const SizedBox(height: 11),
+        const SizedBox(height: 8),
         _buildDropZone(),
         if (_file != null) ...[
           const SizedBox(height: 9),
           _buildFileCard(),
         ],
-        const SizedBox(height: 8),
+        const SizedBox(height: 7),
         _buildTemplateCard(),
         if (_error != null) ...[
           const SizedBox(height: 9),
           _buildError(),
         ],
-        const SizedBox(height: 11),
+        const SizedBox(height: 9),
         SizedBox(
           width: double.infinity,
-          height: 47,
+          height: 45,
           child: FilledButton.icon(
             onPressed: _file == null ? null : _startImport,
             icon: const Icon(LucideIcons.upload, size: 19),
@@ -233,7 +236,7 @@ class _ImportScreenState extends State<ImportScreen> {
       borderRadius: BorderRadius.circular(17),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(.58),
           borderRadius: BorderRadius.circular(17),
@@ -241,13 +244,13 @@ class _ImportScreenState extends State<ImportScreen> {
         ),
         child: const Column(
           children: [
-            Icon(LucideIcons.cloudUpload, size: 42, color: blue),
-            SizedBox(height: 8),
-            Text('اختر ملف Excel هنا', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, color: navy)),
-            SizedBox(height: 3),
-            Text('أو اسحب الملف إلى هنا', style: TextStyle(fontSize: 11, color: Color(0xff64748B))),
+            Icon(LucideIcons.cloudUpload, size: 34, color: blue),
+            SizedBox(height: 5),
+            Text('اختر ملف Excel هنا', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: navy)),
             SizedBox(height: 2),
-            Text('(XLSX أو XLS)', style: TextStyle(fontSize: 10, color: Color(0xff94A3B8))),
+            Text('أو اسحب الملف إلى هنا', style: TextStyle(fontSize: 10, color: Color(0xff64748B))),
+            SizedBox(height: 1),
+            Text('(XLSX أو XLS)', style: TextStyle(fontSize: 9.5, color: Color(0xff94A3B8))),
           ],
         ),
       ),
@@ -257,16 +260,16 @@ class _ImportScreenState extends State<ImportScreen> {
   Widget _buildFileCard() {
     final file = _file!;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xffDCE7F7))),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0xffDCE7F7))),
       child: Row(
         textDirection: TextDirection.rtl,
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(color: const Color(0xffDCFCE7), borderRadius: BorderRadius.circular(10)),
-            child: const Icon(LucideIcons.fileSpreadsheet, color: green, size: 21),
+            child: const _ExcelIcon(),
           ),
           const SizedBox(width: 9),
           Expanded(
@@ -292,41 +295,99 @@ class _ImportScreenState extends State<ImportScreen> {
 
   Widget _buildTemplateCard() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-      decoration: BoxDecoration(color: const Color(0xffEFF6FF), borderRadius: BorderRadius.circular(14), border: Border.all(color: const Color(0xffBFDBFE))),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xffEFF6FF),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: const Color(0xffBFDBFE)),
+      ),
       child: Row(
         textDirection: TextDirection.rtl,
         children: [
-          const Icon(LucideIcons.info, color: blue, size: 18),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'يجب أن يحتوي الملف على اسم الموظف، رقم الهوية/الإقامة، وتاريخ انتهاء الهوية.',
-              textAlign: TextAlign.right,
-              style: TextStyle(fontSize: 10.5, height: 1.55, color: Color(0xff334155)),
-            ),
-          ),
-          const SizedBox(width: 7),
           InkWell(
             onTap: _downloadTemplate,
             borderRadius: BorderRadius.circular(10),
             child: Container(
               width: 34,
               height: 34,
-              decoration: BoxDecoration(color: const Color(0xffDBEAFE), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: const Color(0xffDBEAFE),
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: const Icon(LucideIcons.download, color: blue, size: 18),
             ),
           ),
+          const SizedBox(width: 9),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  'تحميل نموذج ملف Excel',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                    color: navy,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'استخدم هذا النموذج لتنسيق البيانات بشكل صحيح',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    fontSize: 9.2,
+                    color: Color(0xff64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(LucideIcons.info, color: blue, size: 17),
         ],
       ),
     );
   }
 
   Future<void> _downloadTemplate() async {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('سيتم توفير نموذج Excel في إصدار الاستيراد النهائي.')),
-    );
+    try {
+      final workbook = excel_pkg.Excel.createExcel();
+      final sheet = workbook['Employees'];
+      sheet.appendRow([
+        excel_pkg.TextCellValue('اسم الموظف'),
+        excel_pkg.TextCellValue('رقم الهوية/الإقامة'),
+        excel_pkg.TextCellValue('تاريخ انتهاء الهوية'),
+      ]);
+      sheet.appendRow([
+        excel_pkg.TextCellValue('مثال: محمد أحمد'),
+        excel_pkg.TextCellValue('1234567890'),
+        excel_pkg.TextCellValue('31/12/2026'),
+      ]);
+
+      final bytes = workbook.encode();
+      if (bytes == null || bytes.isEmpty) {
+        throw Exception('تعذر إنشاء نموذج Excel.');
+      }
+
+      final savedPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'حفظ نموذج Excel',
+        fileName: 'Employees_Template.xlsx',
+        bytes: Uint8List.fromList(bytes),
+        type: FileType.custom,
+        allowedExtensions: ['xlsx'],
+      );
+
+      if (!mounted || savedPath == null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم حفظ نموذج Excel بنجاح.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تنزيل النموذج: $e')),
+      );
+    }
   }
 
   Widget _buildProgress() {
@@ -459,6 +520,46 @@ class _ImportScreenState extends State<ImportScreen> {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+}
+
+class _ExcelIcon extends StatelessWidget {
+  const _ExcelIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 22,
+          height: 25,
+          decoration: BoxDecoration(
+            color: const Color(0xff16A34A),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        Positioned(
+          left: 4,
+          child: Container(
+            width: 11,
+            height: 16,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(.95),
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ),
+        const Text(
+          'X',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
   }
 }
 
