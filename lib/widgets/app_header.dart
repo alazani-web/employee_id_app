@@ -17,93 +17,92 @@ class AppHeader extends StatelessWidget {
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       color: Colors.white,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // ============================================================
+            // التنبيهات - جهة اليمين
+            // ============================================================
 
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-
-          // =================================================
-          // زر القائمة
-          // =================================================
-
-          IconButton(
-            onPressed: onMenuTap,
-
-            icon: const Icon(
-              Icons.menu,
-              size: 30,
-              color: Color(0xff111827),
-            ),
-          ),
-
-          // =================================================
-          // اسم التطبيق
-          // =================================================
-
-          const Text(
-            "نظام إدارة الهويات",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xff111827),
-            ),
-          ),
-
-          // =================================================
-          // التنبيهات
-          // =================================================
-
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-
-              IconButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AlertsScreen(),
-                    ),
-                  );
-                },
-
-                icon: const Icon(
-                  Icons.notifications_none,
-                  size: 30,
-                  color: Color(0xff111827),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AlertsScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(
+                    Icons.notifications_none,
+                    size: 30,
+                    color: Color(0xff111827),
+                  ),
                 ),
-              ),
 
-              if (alertCount > 0)
-                Positioned(
-                  right: 4,
-                  top: 2,
-
-                  child: Container(
-                    width: 19,
-                    height: 19,
-
-                    alignment: Alignment.center,
-
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-
-                    child: Text(
-                      alertCount.toString(),
-
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                // عدد التنبيهات
+                if (alertCount > 0)
+                  Positioned(
+                    right: 4,
+                    top: 2,
+                    child: Container(
+                      width: 19,
+                      height: 19,
+                      alignment: Alignment.center,
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        alertCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
+              ],
+            ),
+
+            // ============================================================
+            // اسم التطبيق - الوسط
+            // ============================================================
+
+            const Expanded(
+              child: Center(
+                child: Text(
+                  "نظام إدارة الهويات",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff111827),
+                  ),
                 ),
-            ],
-          ),
-        ],
+              ),
+            ),
+
+            // ============================================================
+            // زر القائمة - جهة اليسار
+            // ============================================================
+
+            IconButton(
+              onPressed: onMenuTap,
+              tooltip: "القائمة",
+              icon: const Icon(
+                Icons.menu,
+                size: 30,
+                color: Color(0xff111827),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

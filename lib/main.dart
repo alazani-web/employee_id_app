@@ -15,7 +15,6 @@ Future<void> main() async {
   await NotificationService.instance.initialize();
 
   // إعادة جدولة التنبيهات الموجودة في البيانات المحلية.
-  // أي إشعار تم إنشاؤه سابقًا لا يعتمد على فتح صفحة معينة.
   try {
     await NotificationService.instance.syncStoredData();
   } catch (_) {
@@ -52,6 +51,10 @@ class MainApp extends StatelessWidget {
       title: 'نظام إدارة الهويات',
       debugShowCheckedModeBanner: false,
 
+      // ============================================================
+      // اللغة والاتجاه
+      // ============================================================
+
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -65,14 +68,38 @@ class MainApp extends StatelessWidget {
 
       locale: const Locale('ar', 'SA'),
 
+      // ============================================================
+      // الثيم العام
+      // ============================================================
+
       theme: ThemeData(
-        fontFamily: 'Cairo',
         useMaterial3: true,
+        fontFamily: 'Cairo',
+
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1D4ED8),
           primary: const Color(0xFF1D4ED8),
         ),
+
+        // منع الـ Material من إضافة تأثيرات أو ألوان
+        // غير مطلوبة على الأزرار والبطاقات.
+        splashFactory: InkRipple.splashFactory,
+
+        visualDensity: VisualDensity.standard,
+
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android:
+                CupertinoPageTransitionsBuilder(),
+            TargetPlatform.iOS:
+                CupertinoPageTransitionsBuilder(),
+          },
+        ),
       ),
+
+      // ============================================================
+      // الصفحة الرئيسية
+      // ============================================================
 
       home: const App(),
     );

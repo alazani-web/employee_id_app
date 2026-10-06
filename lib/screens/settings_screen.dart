@@ -10,10 +10,12 @@ import '../services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String selectedPage;
+  final VoidCallback? onBack;
 
   const SettingsScreen({
     super.key,
     this.selectedPage = "settings",
+    this.onBack,
   });
 
   @override
@@ -168,27 +170,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 21,
-              fontWeight: FontWeight.bold,
-              color: Color(0xff1F2937),
+  padding: const EdgeInsets.symmetric(vertical: 6),
+  child: Row(
+    children: [
+      if (currentPage == "alerts")
+        IconButton(
+          onPressed: widget.onBack,
+          tooltip: "رجوع",
+          icon: const Icon(
+            LucideIcons.arrowRight,
+            size: 24,
+            color: Color(0xff1F2937),
+          ),
+        )
+      else
+        const SizedBox(width: 48),
+
+      Expanded(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.bold,
+                color: Color(0xff1F2937),
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Icon(
-            icon,
-            size: 23,
-            color: const Color(0xff2864D7),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Icon(
+              icon,
+              size: 23,
+              color: const Color(0xff2864D7),
+            ),
+          ],
+        ),
       ),
-    );
+
+      const SizedBox(width: 48),
+    ],
+  ),
+);
   }
 
   // ============================================================

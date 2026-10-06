@@ -27,26 +27,27 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   String currentPage = 'home';
 
-  // نحتفظ بالصفحات الرئيسية داخل IndexedStack حتى لا يعاد بناؤها
-  // عند كل انتقال، وبالتالي لا يحدث اهتزاز أو انتقال بصري غير مرغوب.
-  final List<Widget> _mainPages = const [
-    HomeScreen(),
-    EmployeesScreen(),
-    VisitsScreen(),
-    DocumentsScreen(),
-    ReportsScreen(),
-  ];
-
-  bool _lockEnabled = false;
-  bool _isLocked = false;
-  bool _loadingLock = true;
+  late final List<Widget> _mainPages;
 
   @override
   void initState() {
     super.initState();
+
+    _mainPages = [
+      HomeScreen(onNavigate: navigate),
+      const EmployeesScreen(),
+      const VisitsScreen(),
+      const DocumentsScreen(),
+      const ReportsScreen(),
+    ];
+
     WidgetsBinding.instance.addObserver(this);
     _loadLockState();
   }
+
+  bool _lockEnabled = false;
+  bool _isLocked = false;
+  bool _loadingLock = true;
 
   @override
   void dispose() {
@@ -85,6 +86,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
     setState(() {
       _lockEnabled = enabled && pin.isNotEmpty;
+
       if (_lockEnabled) {
         _isLocked = true;
       }
@@ -97,8 +99,11 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
     if (pin == saved) {
       if (mounted) {
-        setState(() => _isLocked = false);
+        setState(() {
+          _isLocked = false;
+        });
       }
+
       return true;
     }
 
@@ -108,10 +113,9 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   void navigate(String page) {
     if (!mounted) return;
 
-    scaffoldKey.currentState?.closeDrawer();
+    // إغلاق القائمة الجانبية من الجهة اليسرى
+    scaffoldKey.currentState?.closeEndDrawer();
 
-    // لا نستخدم Navigator.push عند تغيير تبويب رئيسي.
-    // مجرد تغيير index داخل IndexedStack يمنع حركة الصفحة والاهتزاز.
     setState(() {
       currentPage = page;
     });
@@ -121,12 +125,16 @@ class _AppState extends State<App> with WidgetsBindingObserver {
     switch (currentPage) {
       case 'employees':
         return 1;
+
       case 'visits':
         return 2;
+
       case 'documents':
         return 3;
+
       case 'reports':
         return 4;
+
       default:
         return 0;
     }
@@ -141,7 +149,10 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   Widget _buildPage() {
     if (!_isMainPage) {
-      return SettingsScreen(selectedPage: currentPage);
+      return SettingsScreen(
+        selectedPage: currentPage,
+        onBack: () => navigate('home'),
+      );
     }
 
     return IndexedStack(
@@ -155,7 +166,9 @@ class _AppState extends State<App> with WidgetsBindingObserver {
     if (_loadingLock) {
       return const Material(
         color: Color(0xffF7F9FC),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
     }
 
@@ -163,14 +176,29 @@ class _AppState extends State<App> with WidgetsBindingObserver {
       children: [
         Scaffold(
           key: scaffoldKey,
-          drawer: SideMenu(onNavigate: navigate),
+
+          // القائمة الجانبية تظهر من الجهة اليسرى
+          // لأن التطبيق يعمل باتجاه RTL
+          endDrawer: SideMenu(
+            onNavigate: navigate,
+          ),
+
           body: Column(
             children: [
               AppHeader(
-                alertCount: context.watch<AlertProvider>().alertCount,
-                onMenuTap: () => scaffoldKey.currentState?.openDrawer(),
+                alertCount:
+                    context.watch<AlertProvider>().alertCount,
+
+                // فتح القائمة من الجهة اليسرى
+                onMenuTap: () {
+                  scaffoldKey.currentState?.openEndDrawer();
+                },
               ),
-              Expanded(child: _buildPage()),
+
+              Expanded(
+                child: _buildPage(),
+              ),
+
               if (_isMainPage)
                 SizedBox(
                   height: 64,
@@ -184,6 +212,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
                         'documents',
                         'reports',
                       ];
+
                       navigate(pages[index]);
                     },
                   ),
@@ -191,6 +220,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
             ],
           ),
         ),
+
         if (_isLocked)
           AppLockScreen(
             onUnlock: _verifyPin,

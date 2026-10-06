@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/employees_screen.dart';
@@ -11,7 +12,7 @@ import 'screens/settings_screen.dart';
 import 'widgets/app_header.dart';
 import 'widgets/bottom_navigation.dart';
 import 'widgets/side_menu.dart';
-import 'package:provider/provider.dart';
+
 import 'providers/alert_provider.dart';
 
 class App extends StatefulWidget {
@@ -22,20 +23,24 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
-  // المفتاح الخاص بالـ Scaffold
+  // =====================================================
+  // مفاتيح التطبيق
+  // =====================================================
+
   final GlobalKey<ScaffoldState> scaffoldKey =
       GlobalKey<ScaffoldState>();
 
-  String currentPage = "home";
-
-  // مفتاح الـ Navigator الداخلي الخاص بالصفحات.
-  // يبقى ثابتًا حتى لا يتم إنشاء Navigator جديد عند تغيير الصفحة.
   final GlobalKey<NavigatorState> pageNavigatorKey =
       GlobalKey<NavigatorState>();
 
-
   // =====================================================
   // الصفحة الحالية
+  // =====================================================
+
+  String currentPage = "home";
+
+  // =====================================================
+  // الحصول على الصفحة الحالية
   // =====================================================
 
   Widget getCurrentPage() {
@@ -73,21 +78,22 @@ class _AppState extends State<App> {
   }
 
   // =====================================================
-  // التنقل
+  // التنقل بين الصفحات
   // =====================================================
 
   void navigate(String page) {
-    // مهم: لا نعتمد على currentPage لمعرفة الصفحة المعروضة فعليًا،
-    // لأن الصفحة قد تكون فُتحت من داخل HomeScreen باستخدام Navigator.push.
-    // لذلك يجب تنفيذ الانتقال في كل ضغطة على الشريط السفلي.
     setState(() {
       currentPage = page;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || pageNavigatorKey.currentState == null) return;
+      if (!mounted) return;
 
-      pageNavigatorKey.currentState!.pushAndRemoveUntil(
+      final navigator = pageNavigatorKey.currentState;
+
+      if (navigator == null) return;
+
+      navigator.pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => getCurrentPage(),
         ),
@@ -97,7 +103,7 @@ class _AppState extends State<App> {
   }
 
   // =====================================================
-  // الشريط السفلي
+  // تحديد العنصر النشط في الشريط السفلي
   // =====================================================
 
   int getCurrentIndex() {
@@ -131,16 +137,42 @@ class _AppState extends State<App> {
 
       title: "نظام إدارة الهويات",
 
+      // ===================================================
+      // دعم اللغة العربية
+      // ===================================================
+
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+
+      supportedLocales: const [
+        Locale('ar', 'SA'),
+        Locale('en', 'US'),
+      ],
+
+      locale: const Locale('ar', 'SA'),
+
+      // ===================================================
+      // الثيم
+      // ===================================================
+
       theme: ThemeData(
         useMaterial3: true,
-        fontFamily: "Arial",
+        fontFamily: "Cairo",
+        visualDensity: VisualDensity.standard,
       ),
+
+      // ===================================================
+      // التطبيق الرئيسي
+      // ===================================================
 
       home: Scaffold(
         key: scaffoldKey,
 
         // =================================================
-        // تم التغيير إلى drawer لفتح القائمة من اليسار
+        // القائمة الجانبية
         // =================================================
 
         drawer: SideMenu(
@@ -148,61 +180,94 @@ class _AppState extends State<App> {
         ),
 
         // =================================================
-        // محتوى التطبيق
+        // SafeArea
+        //
+        // يمنع المحتوى من الدخول في:
+        // - شريط الحالة
+        // - النوتش
+        // - حواف الشاشة
+        // - منطقة أزرار النظام
         // =================================================
 
-        body: Column(
-          children: [
+        body: SafeArea(
+          top: true,
+          bottom: true,
+          left: true,
+          right: true,
 
-            // الهيدر
-            AppHeader(
-              alertCount: context.watch<AlertProvider>().alertCount,
+          child: Column(
+            children: [
+              // =================================================
+              // الهيدر
+              // =================================================
 
-              // تم التغيير إلى openDrawer للفتح من اليسار
-              onMenuTap: () {
-                scaffoldKey.currentState?.openDrawer();
-              },
-            ),
+              SizedBox(
+                width: double.infinity,
+                child: AppHeader(
+                  alertCount:
+                      context.watch<AlertProvider>().alertCount,
 
-            // الصفحة
-            Expanded(
-              child: Navigator(
-                key: pageNavigatorKey,
-                onGenerateRoute: (_) => MaterialPageRoute(
-                  builder: (_) => const HomeScreen(),
+                  onMenuTap: () {
+                    scaffoldKey.currentState?.openDrawer();
+                  },
                 ),
               ),
-            ),
 
-            // الشريط السفلي
-            BottomNavigation(
-              currentIndex: getCurrentIndex(),
+              // =================================================
+              // محتوى الصفحات
+              //
+              // Expanded يمنع المحتوى من تجاوز المساحة المتاحة.
+              // =================================================
 
-              onTap: (index) {
-                switch (index) {
-                  case 0:
-                    navigate("home");
-                    break;
+              Expanded(
+                child: ClipRect(
+                  child: Navigator(
+                    key: pageNavigatorKey,
+                    onGenerateRoute: (_) {
+                      return MaterialPageRoute(
+                        builder: (_) => const HomeScreen(),
+                      );
+                    },
+                  ),
+                ),
+              ),
 
-                  case 1:
-                    navigate("employees");
-                    break;
+              // =================================================
+              // الشريط السفلي
+              // =================================================
 
-                  case 2:
-                    navigate("visits");
-                    break;
+              SizedBox(
+                width: double.infinity,
+                child: BottomNavigation(
+                  currentIndex: getCurrentIndex(),
 
-                  case 3:
-                    navigate("documents");
-                    break;
+                  onTap: (index) {
+                    switch (index) {
+                      case 0:
+                        navigate("home");
+                        break;
 
-                  case 4:
-                    navigate("reports");
-                    break;
-                }
-              },
-            ),
-          ],
+                      case 1:
+                        navigate("employees");
+                        break;
+
+                      case 2:
+                        navigate("visits");
+                        break;
+
+                      case 3:
+                        navigate("documents");
+                        break;
+
+                      case 4:
+                        navigate("reports");
+                        break;
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
