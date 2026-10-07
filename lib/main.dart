@@ -18,6 +18,12 @@ Future<void> main() async {
   // إعادة جدولة التنبيهات الموجودة في البيانات المحلية.
   try {
     await NotificationService.instance.syncStoredData();
+
+    // اختبار مؤقت لجدولة إشعار Android:
+    // سيظهر بعد دقيقة واحدة من تشغيل التطبيق.
+    await NotificationService.instance.scheduleDebugScheduledNotification(
+      minutesFromNow: 1,
+    );
   } catch (_) {
     // لا نمنع تشغيل التطبيق إذا تعذر نظام الإشعارات.
   }

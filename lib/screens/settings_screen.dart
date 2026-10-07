@@ -157,6 +157,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         break;
 
       case "alerts":
+      case "notification_settings":
         title = "ضبط الإشعارات";
         icon = LucideIcons.bell;
         break;
@@ -236,6 +237,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return _buildLockView();
 
       case "alerts":
+      case "notification_settings":
         return _buildAlertsView();
 
       case "tasks":

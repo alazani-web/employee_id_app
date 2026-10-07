@@ -109,7 +109,7 @@ class SideMenu extends StatelessWidget {
                       icon: LucideIcons.bell,
                       title: "ضبط الإشعارات",
                       subtitle: "مواعيد وتنبيهات النظام",
-                      page: "alerts",
+                      page: "notification_settings",
                     ),
                     menuItem(
                       context: context,
