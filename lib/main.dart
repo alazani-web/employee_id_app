@@ -7,6 +7,7 @@ import 'providers/employee_provider.dart';
 import 'providers/visit_provider.dart';
 import 'providers/alert_provider.dart';
 import 'services/notification_service.dart';
+import 'package:flutter/cupertino.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -87,7 +88,10 @@ class MainApp extends StatelessWidget {
 
         visualDensity: VisualDensity.standard,
 
-        pageTransitionsTheme: const PageTransitionsTheme(
+        // تم حذف const من PageTransitionsTheme
+        // لأن CupertinoPageTransitionsBuilder()
+        // ليس تعبيرًا ثابتًا في إصدار Flutter الحالي.
+        pageTransitionsTheme: PageTransitionsTheme(
           builders: {
             TargetPlatform.android:
                 CupertinoPageTransitionsBuilder(),

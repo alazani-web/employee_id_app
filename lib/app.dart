@@ -498,9 +498,14 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
 
 
-          body: Column(
+          body: SafeArea(
+            top: true,
+            bottom: true,
+            left: false,
+            right: false,
+            child: Column(
 
-            children: [
+              children: [
 
               AppHeader(
 
@@ -578,7 +583,9 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
                 ),
 
-            ],
+              ],
+
+            ),
 
           ),
 
