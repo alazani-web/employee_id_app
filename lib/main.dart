@@ -1,16 +1,84 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/cupertino.dart';
 
 import 'app.dart';
 import 'providers/employee_provider.dart';
 import 'providers/visit_provider.dart';
 import 'providers/alert_provider.dart';
 import 'services/notification_service.dart';
-import 'package:flutter/cupertino.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ============================================================
+  // Supabase
+  // ============================================================
+
+  await Supabase.initialize(
+    url: 'https://ndlrmzpczioccwqxllhk.supabase.co',
+    publishableKey: 'sb_publishable_YwRw43XWUpiDzgLJ7Ogq3w_vPNOm-JQ',
+  );
+
+  // ============================================================
+  // Supabase connection/auth diagnostic
+  // ============================================================
+  try {
+    final supabase = Supabase.instance.client;
+
+    debugPrint('==============================================');
+    debugPrint('SUPABASE TEST START');
+    debugPrint('SUPABASE URL: ${supabase.rest.url}');
+
+    final existingUser = supabase.auth.currentUser;
+
+    if (existingUser != null) {
+      debugPrint('SUPABASE USER ALREADY EXISTS: ${existingUser.id}');
+    } else {
+      debugPrint('SUPABASE USER: none -> creating anonymous user...');
+
+      final response = await supabase.auth.signInAnonymously();
+
+      if (response.user == null) {
+        debugPrint('SUPABASE AUTH ERROR: signInAnonymously returned null user');
+      } else {
+        debugPrint('SUPABASE ANONYMOUS USER CREATED: ${response.user!.id}');
+      }
+    }
+
+    final currentUser = supabase.auth.currentUser;
+    debugPrint('SUPABASE CURRENT USER: ${currentUser?.id ?? 'NULL'}');
+    debugPrint(
+      'SUPABASE SESSION: ${supabase.auth.currentSession != null ? 'ACTIVE' : 'NULL'}',
+    );
+
+    // اختبار القراءة فقط من جدول employees.
+    // لا نضيف ولا نعدل أي بيانات في هذا الاختبار.
+    if (currentUser != null) {
+      final rows = await supabase
+          .from('employees')
+          .select('id')
+          .limit(1);
+
+      debugPrint(
+        'SUPABASE EMPLOYEES READ: SUCCESS (${rows.length} row(s) returned)',
+      );
+    }
+
+    debugPrint('SUPABASE TEST END');
+    debugPrint('==============================================');
+  } catch (e, stackTrace) {
+    debugPrint('==============================================');
+    debugPrint('SUPABASE TEST ERROR: $e');
+    debugPrint(stackTrace.toString());
+    debugPrint('==============================================');
+  }
+
+  // ============================================================
+  // Notifications
+  // ============================================================
 
   // تهيئة نظام الإشعارات قبل تشغيل التطبيق.
   await NotificationService.instance.initialize();
@@ -18,12 +86,13 @@ Future<void> main() async {
   // إعادة جدولة التنبيهات الموجودة في البيانات المحلية.
   try {
     await NotificationService.instance.syncStoredData();
-
-    // إعادة جدولة التنبيهات الموجودة في البيانات المحلية.
-    // لا يوجد اختبار تجريبي هنا حتى لا يظهر إشعار إضافي عند كل تشغيل.
   } catch (_) {
     // لا نمنع تشغيل التطبيق إذا تعذر نظام الإشعارات.
   }
+
+  // ============================================================
+  // Application
+  // ============================================================
 
   runApp(
     MultiProvider(
@@ -31,9 +100,11 @@ Future<void> main() async {
         ChangeNotifierProvider<EmployeeProvider>(
           create: (_) => EmployeeProvider(),
         ),
+
         ChangeNotifierProvider<VisitProvider>(
           create: (_) => VisitProvider(),
         ),
+
         ChangeNotifierProvider<AlertProvider>(
           create: (context) => AlertProvider(
             context.read<EmployeeProvider>(),
@@ -91,9 +162,6 @@ class MainApp extends StatelessWidget {
 
         visualDensity: VisualDensity.standard,
 
-        // تم حذف const من PageTransitionsTheme
-        // لأن CupertinoPageTransitionsBuilder()
-        // ليس تعبيرًا ثابتًا في إصدار Flutter الحالي.
         pageTransitionsTheme: PageTransitionsTheme(
           builders: {
             TargetPlatform.android:

@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/employee.dart';
 import '../services/notification_service.dart';
+import '../services/supabase_service.dart';
 import '../utils/renewal_calculator.dart';
 
 class EmployeeProvider extends ChangeNotifier {
@@ -33,6 +35,134 @@ class EmployeeProvider extends ChangeNotifier {
 
     result = result.replaceAll(RegExp(r'(?<=\d)\.0+$'), '');
     return result.replaceAll(RegExp(r'[\s\-_/]+'), '');
+  }
+
+  // ------------------------------------------------------------
+  // Supabase
+  // ------------------------------------------------------------
+
+  Future<User?> _ensureSupabaseUser() async {
+    try {
+      final service = SupabaseService.instance;
+
+      if (service.currentUser != null) {
+        return service.currentUser;
+      }
+
+      // التطبيق لا يحتوي حالياً على شاشة تسجيل دخول.
+      // نستخدم Anonymous Auth حتى يكون لكل نسخة مستخدم/مالك في Supabase.
+      final response = await service.client.auth.signInAnonymously();
+
+      return response.user;
+    } catch (e) {
+      debugPrint('Supabase authentication error: $e');
+      return null;
+    }
+  }
+
+  DateTime? _parseSupabaseDate(String value) {
+    if (value.trim().isEmpty) return null;
+
+    final parsed = DateTime.tryParse(value.trim());
+    if (parsed == null) return null;
+
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  Map<String, dynamic> _employeeToSupabaseRow(
+    Employee employee,
+    String userId,
+  ) {
+    return {
+      'user_id': userId,
+      'id': employee.id,
+      'name': employee.name,
+      'id_number': _normalizeIdNumber(employee.idNumber),
+      'expiry_date': _parseSupabaseDate(employee.expiryDate)
+          ?.toIso8601String()
+          .split('T')
+          .first,
+      'job_title': employee.jobTitle,
+      'phone_number': employee.phoneNumber,
+      'status': employee.status,
+      'logs': employee.logs,
+    };
+  }
+
+  Future<void> _upsertEmployeeToSupabase(Employee employee) async {
+    try {
+      final user = await _ensureSupabaseUser();
+
+      if (user == null) {
+        debugPrint(
+          'Supabase employee sync skipped: no authenticated user.',
+        );
+        return;
+      }
+
+      await SupabaseService.instance.client
+          .from('employees')
+          .upsert(
+            _employeeToSupabaseRow(employee, user.id),
+            onConflict: 'user_id,id',
+          );
+    } catch (e, stackTrace) {
+      // لا نوقف التطبيق أو الحفظ المحلي إذا تعذر الاتصال بالسحابة.
+      debugPrint('Supabase employee upsert error: $e');
+      debugPrint(stackTrace.toString());
+    }
+  }
+
+  Future<void> _deleteEmployeeFromSupabase(String id) async {
+    try {
+      final user = await _ensureSupabaseUser();
+
+      if (user == null) return;
+
+      await SupabaseService.instance.client
+          .from('employees')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', user.id);
+    } catch (e, stackTrace) {
+      debugPrint('Supabase employee delete error: $e');
+      debugPrint(stackTrace.toString());
+    }
+  }
+
+  /// رفع جميع الموظفين المحفوظين محلياً إلى Supabase.
+  ///
+  /// لا يستبدل البيانات المحلية ولا يحذفها.
+  /// يمكن استدعاؤها لاحقاً من صفحة النسخ الاحتياطي أو بعد تسجيل الدخول.
+  Future<int> syncLocalEmployeesToSupabase() async {
+    await _initialization;
+
+    if (_employees.isEmpty) return 0;
+
+    try {
+      final user = await _ensureSupabaseUser();
+
+      if (user == null) {
+        debugPrint(
+          'Supabase bulk employee sync skipped: no authenticated user.',
+        );
+        return 0;
+      }
+
+      final rows = _employees
+          .map((employee) => _employeeToSupabaseRow(employee, user.id))
+          .toList();
+
+      await SupabaseService.instance.client
+          .from('employees')
+          .upsert(rows, onConflict: 'user_id,id');
+
+      return rows.length;
+    } catch (e, stackTrace) {
+      debugPrint('Supabase bulk employee sync error: $e');
+      debugPrint(stackTrace.toString());
+      return 0;
+    }
   }
 
   Future<void> _syncEmployeeNotification(Employee employee) async {
@@ -70,7 +200,13 @@ class EmployeeProvider extends ChangeNotifier {
 
     _employees.add(employee);
     notifyListeners();
+
+    // الحفظ المحلي أولاً حتى لا تتأثر البيانات إذا انقطع الإنترنت.
     await _saveEmployeesToStorage();
+
+    // السحابة ثانوية ولا تمنع التطبيق من العمل محلياً.
+    await _upsertEmployeeToSupabase(employee);
+
     await _syncEmployeeNotification(employee);
   }
 
@@ -114,7 +250,29 @@ class EmployeeProvider extends ChangeNotifier {
 
     _employees.addAll(validEmployees);
     notifyListeners();
+
+    // حفظ محلي أولاً.
     await _saveEmployeesToStorage();
+
+    // رفع الدفعة كاملة إلى Supabase.
+    try {
+      final user = await _ensureSupabaseUser();
+
+      if (user != null) {
+        final rows = validEmployees
+            .map((employee) => _employeeToSupabaseRow(employee, user.id))
+            .toList();
+
+        await SupabaseService.instance.client
+            .from('employees')
+            .upsert(rows, onConflict: 'user_id,id');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Supabase batch employee sync error: $e');
+      debugPrint(stackTrace.toString());
+    }
+
+    // الإشعارات الحالية تبقى كما هي.
     for (final employee in validEmployees) {
       await _syncEmployeeNotification(employee);
     }
@@ -140,7 +298,9 @@ class EmployeeProvider extends ChangeNotifier {
 
     _employees[index] = updatedEmployee;
     notifyListeners();
+
     await _saveEmployeesToStorage();
+    await _upsertEmployeeToSupabase(updatedEmployee);
     await _syncEmployeeNotification(updatedEmployee);
   }
 
@@ -168,7 +328,9 @@ class EmployeeProvider extends ChangeNotifier {
     );
 
     notifyListeners();
+
     await _saveEmployeesToStorage();
+    await _upsertEmployeeToSupabase(_employees[index]);
     await _syncEmployeeNotification(_employees[index]);
   }
 
@@ -191,7 +353,9 @@ class EmployeeProvider extends ChangeNotifier {
     } catch (_) {}
 
     notifyListeners();
+
     await _saveEmployeesToStorage();
+    await _deleteEmployeeFromSupabase(id);
   }
 
   // ------------------------------------------------------------
@@ -227,6 +391,7 @@ class EmployeeProvider extends ChangeNotifier {
         for (final item in saved) {
           try {
             final json = jsonDecode(item);
+
             if (json is Map<String, dynamic>) {
               _employees.add(Employee.fromJson(json));
             } else if (json is Map) {
@@ -240,7 +405,8 @@ class EmployeeProvider extends ChangeNotifier {
         }
       }
 
-      // لا نضيف بيانات تجريبية. يبدأ النظام ببيانات المستخدم الفعلية فقط.
+      // لا نضيف بيانات تجريبية.
+      // يبدأ النظام ببيانات المستخدم الفعلية فقط.
     } catch (e, stackTrace) {
       // لا نترك الـ Provider في حالة تمنع الاستيراد إذا حدث خطأ في التخزين.
       debugPrint('Employee storage error: $e');

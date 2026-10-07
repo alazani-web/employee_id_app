@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/visit.dart';
 import '../services/notification_service.dart';
+import '../services/supabase_service.dart';
 import '../utils/renewal_calculator.dart';
 
 class VisitProvider extends ChangeNotifier {
@@ -60,6 +62,139 @@ class VisitProvider extends ChangeNotifier {
   List<Visit> get visits => List.unmodifiable(_visits);
 
   int get visitCount => _visits.length;
+
+  // ============================================================
+  // Supabase
+  // ============================================================
+
+  Future<User?> _ensureSupabaseUser() async {
+    try {
+      final service = SupabaseService.instance;
+
+      if (service.currentUser != null) {
+        return service.currentUser;
+      }
+
+      // لا توجد شاشة تسجيل دخول حالياً، لذلك نستخدم Anonymous Auth.
+      final response = await service.client.auth.signInAnonymously();
+      return response.user;
+    } catch (e) {
+      debugPrint('Supabase authentication error (visits): $e');
+      return null;
+    }
+  }
+
+  DateTime? _parseSupabaseDate(String value) {
+    if (value.trim().isEmpty) return null;
+
+    final parsed = DateTime.tryParse(value.trim());
+    if (parsed == null) return null;
+
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  Map<String, dynamic> _visitToSupabaseRow(
+    Visit visit,
+    String userId,
+  ) {
+    return {
+      'user_id': userId,
+      'id': visit.id,
+      'visitor_name': visit.visitorName,
+      'passport_number': visit.passportNumber,
+      'visa_number': visit.visaNumber,
+      'border_number': visit.borderNumber,
+      'expiry_date': _parseSupabaseDate(visit.expiryDate)
+          ?.toIso8601String()
+          .split('T')
+          .first,
+      'insurance_expiry_date': _parseSupabaseDate(visit.insuranceExpiryDate)
+          ?.toIso8601String()
+          .split('T')
+          .first,
+      'notes': visit.notes,
+      'status': visit.status,
+      'logs': visit.logs,
+    };
+  }
+
+  Future<void> _upsertVisitToSupabase(Visit visit) async {
+    try {
+      final user = await _ensureSupabaseUser();
+
+      if (user == null) {
+        debugPrint(
+          'Supabase visit sync skipped: no authenticated user.',
+        );
+        return;
+      }
+
+      await SupabaseService.instance.client
+          .from('visits')
+          .upsert(
+            _visitToSupabaseRow(visit, user.id),
+            onConflict: 'user_id,id',
+          );
+    } catch (e, stackTrace) {
+      // السحابة ثانوية؛ لا نمنع الحفظ المحلي إذا فشلت.
+      debugPrint('Supabase visit upsert error: $e');
+      debugPrint(stackTrace.toString());
+    }
+  }
+
+  Future<void> _deleteVisitFromSupabase(String id) async {
+    try {
+      final user = await _ensureSupabaseUser();
+
+      if (user == null) return;
+
+      await SupabaseService.instance.client
+          .from('visits')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', user.id);
+    } catch (e, stackTrace) {
+      debugPrint('Supabase visit delete error: $e');
+      debugPrint(stackTrace.toString());
+    }
+  }
+
+  /// رفع جميع الزيارات المحفوظة محلياً إلى Supabase.
+  ///
+  /// لا يحذف أو يستبدل البيانات المحلية.
+  Future<int> syncLocalVisitsToSupabase() async {
+    await _initialization;
+
+    if (_visits.isEmpty) return 0;
+
+    try {
+      final user = await _ensureSupabaseUser();
+
+      if (user == null) {
+        debugPrint(
+          'Supabase bulk visit sync skipped: no authenticated user.',
+        );
+        return 0;
+      }
+
+      final rows = _visits
+          .map((visit) => _visitToSupabaseRow(visit, user.id))
+          .toList();
+
+      await SupabaseService.instance.client
+          .from('visits')
+          .upsert(
+            rows,
+            onConflict: 'user_id,id',
+          );
+
+      return rows.length;
+    } catch (e, stackTrace) {
+      debugPrint('Supabase bulk visit sync error: $e');
+      debugPrint(stackTrace.toString());
+      return 0;
+    }
+  }
 
   // ============================================================
   // Notifications
@@ -173,6 +308,9 @@ class VisitProvider extends ChangeNotifier {
 
     await _saveVisits();
 
+    // السحابة ثانوية ولا تمنع الحفظ المحلي.
+    await _upsertVisitToSupabase(visit);
+
     // جدولة إشعارات السجل الجديد فقط.
     await _syncVisitNotifications(visit);
   }
@@ -237,15 +375,43 @@ class VisitProvider extends ChangeNotifier {
       notifyListeners();
       await _saveVisits();
 
-      // جدولة إشعارات السجلات التي تمت إضافتها فعليًا فقط.
+      // رفع السجلات التي تمت إضافتها فعليًا إلى Supabase.
+      final addedVisits = <Visit>[];
       for (final visit in newVisits) {
         final wasAdded = _visits.any(
           (item) => item.id == visit.id,
         );
 
         if (wasAdded) {
-          await _syncVisitNotifications(visit);
+          addedVisits.add(visit);
         }
+      }
+
+      if (addedVisits.isNotEmpty) {
+        try {
+          final user = await _ensureSupabaseUser();
+
+          if (user != null) {
+            final rows = addedVisits
+                .map((visit) => _visitToSupabaseRow(visit, user.id))
+                .toList();
+
+            await SupabaseService.instance.client
+                .from('visits')
+                .upsert(
+                  rows,
+                  onConflict: 'user_id,id',
+                );
+          }
+        } catch (e, stackTrace) {
+          debugPrint('Supabase batch visit sync error: $e');
+          debugPrint(stackTrace.toString());
+        }
+      }
+
+      // جدولة إشعارات السجلات التي تمت إضافتها فعليًا فقط.
+      for (final visit in addedVisits) {
+        await _syncVisitNotifications(visit);
       }
     }
 
@@ -277,6 +443,8 @@ class VisitProvider extends ChangeNotifier {
     notifyListeners();
 
     await _saveVisits();
+
+    await _upsertVisitToSupabase(updatedVisit);
 
     // إنشاء الجدولة الجديدة حسب التواريخ الجديدة فقط.
     await _syncVisitNotifications(updatedVisit);
@@ -338,6 +506,8 @@ class VisitProvider extends ChangeNotifier {
 
     await _saveVisits();
 
+    await _upsertVisitToSupabase(updated);
+
     await _syncVisitNotifications(updated);
   }
 
@@ -367,6 +537,7 @@ class VisitProvider extends ChangeNotifier {
     // نحفظ القائمة بعد الحذف مباشرة.
     // لا توجد هنا أي عملية تعيد جدولة الإشعارات.
     await _saveVisits();
+    await _deleteVisitFromSupabase(id);
   }
 
   // ============================================================
@@ -393,6 +564,11 @@ class VisitProvider extends ChangeNotifier {
     notifyListeners();
 
     await _saveVisits();
+
+    // حذف الزيارات من Supabase بعد حذفها محلياً.
+    for (final id in visitIds) {
+      await _deleteVisitFromSupabase(id);
+    }
   }
 
   // ============================================================

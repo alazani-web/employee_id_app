@@ -1,4 +1,5 @@
 
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,6 +9,7 @@ import '../widgets/confirm_delete_dialog.dart';
 import '../widgets/action_result_dialog.dart';
 import '../providers/alert_provider.dart';
 import '../services/notification_service.dart';
+import '../services/supabase_service.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({super.key});
@@ -112,17 +114,316 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         }
       }
 
+      _ensureDocumentIds();
       setState(() {});
+
+      // بعد تحميل البيانات المحلية نحاول مزامنتها مع Supabase.
+      // في حال عدم تسجيل الدخول أو فشل الاتصال تبقى البيانات المحلية كما هي.
+      unawaited(_syncDocumentsWithSupabase(onInitialLoad: true));
     } catch (_) {
       // إذا كانت البيانات القديمة غير صالحة، لا نوقف الشاشة.
     }
   }
 
   Future<void> _saveDocumentsAndRefreshAlerts() async {
+    _ensureDocumentIds();
+
+    // الحفظ المحلي هو الأساس ولا يعتمد على الإشعارات أو الإنترنت.
     await _saveDocuments();
-    await NotificationService.instance.syncStoredData();
-    if (!mounted) return;
-    await context.read<AlertProvider>().refreshDocuments();
+
+    // على Chrome/Web قد لا تكون خدمة الإشعارات مهيأة؛ لا نسمح لهذا
+    // الخطأ بإيقاف عملية حفظ أو مزامنة الوثيقة مع Supabase.
+    try {
+      await NotificationService.instance.syncStoredData();
+    } catch (e) {
+      debugPrint('DOCUMENT NOTIFICATION SYNC SKIPPED => $e');
+    }
+
+    if (mounted) {
+      try {
+        await context.read<AlertProvider>().refreshDocuments();
+      } catch (e) {
+        debugPrint('DOCUMENT ALERT REFRESH ERROR => $e');
+      }
+    }
+
+    // بعد نجاح الحفظ المحلي نرفع النسخة الحالية مباشرة إلى Supabase.
+    // لا نستخدم _syncDocumentsWithSupabase هنا لأنه قد يستبدل الوثيقة
+    // الجديدة بنسخة قديمة موجودة في السحابة.
+    try {
+      final service = SupabaseService.instance;
+      final user = service.currentUser;
+      if (service.isSignedIn && user != null) {
+        await _uploadAllDocumentsToSupabase(user.id);
+        debugPrint(
+          'SUPABASE DOCUMENTS SYNC: SUCCESS (${_documents.length} document(s))',
+        );
+      }
+    } catch (e) {
+      debugPrint('SUPABASE DOCUMENTS SYNC ERROR => $e');
+    }
+  }
+
+  // ============================================================
+  // Supabase - مزامنة الوثائق مع الحساب الحالي
+  // ============================================================
+
+  void _ensureDocumentIds() {
+    final usedIds = <String>{};
+
+    for (var index = 0; index < _documents.length; index++) {
+      final document = _documents[index];
+      final existingId = document['id']?.toString().trim() ?? '';
+
+      if (existingId.isNotEmpty && !usedIds.contains(existingId)) {
+        usedIds.add(existingId);
+        document['id'] = existingId;
+        continue;
+      }
+
+      final number = document['number']?.toString().trim() ?? '';
+      final name = document['name']?.toString().trim() ?? '';
+      final expiry = document['expiry']?.toString().trim() ?? '';
+      final seed = '${number}_${name}_${expiry}_$index';
+      final safeSeed = base64Url
+          .encode(utf8.encode(seed))
+          .replaceAll('=', '')
+          .replaceAll('-', '')
+          .replaceAll('_', '');
+
+      final end = safeSeed.length > 24 ? 24 : safeSeed.length;
+      var id = 'doc_${safeSeed.substring(0, end)}';
+      if (id == 'doc_' || usedIds.contains(id)) {
+        id = 'doc_${DateTime.now().microsecondsSinceEpoch}_$index';
+      }
+
+      while (usedIds.contains(id)) {
+        id = 'doc_${DateTime.now().microsecondsSinceEpoch}_$index';
+      }
+
+      usedIds.add(id);
+      document['id'] = id;
+    }
+  }
+
+  String _cloudDocumentStatus(String? expiryValue) {
+    final date = _parseDate(expiryValue);
+    if (date == null) return 'active';
+
+    final today = DateTime.now();
+    final todayOnly = DateTime(today.year, today.month, today.day);
+    final dateOnly = DateTime(date.year, date.month, date.day);
+    final days = dateOnly.difference(todayOnly).inDays;
+
+    if (days < 0) return 'expired';
+    if (days <= 30) return 'expiring';
+    return 'active';
+  }
+
+  Map<String, dynamic> _documentToSupabaseRow(
+    Map<String, dynamic> document,
+    String userId,
+  ) {
+    final id = document['id']?.toString().trim() ?? '';
+
+    return {
+      'user_id': userId,
+      'id': id.isEmpty
+          ? 'doc_${DateTime.now().microsecondsSinceEpoch}'
+          : id,
+      'employee_id': document['employee_id']?.toString(),
+      'document_type': document['type']?.toString() ?? 'أخرى',
+      'document_name': document['name']?.toString() ?? '',
+      'document_number': document['number']?.toString() ?? '',
+      'expiry_date': _normalizeSupabaseDate(document['expiry']?.toString()),
+      'status': _cloudDocumentStatus(document['expiry']?.toString()),
+      'notes': document['notes']?.toString() ?? '',
+    };
+  }
+
+  String? _normalizeSupabaseDate(String? value) {
+    final date = _parseDate(value);
+    if (date == null) return null;
+    return _dateToStorage(date);
+  }
+
+  String _iconForDocumentType(String type) {
+    for (final item in _documentTypes) {
+      if (item['name'] == type) {
+        return item['icon'] ?? '📄';
+      }
+    }
+
+    switch (type) {
+      case 'التأمين':
+        return '🛡️';
+      case 'السجل التجاري':
+        return '🏢';
+      case 'الرخصة':
+        return '📄';
+      default:
+        return '📁';
+    }
+  }
+
+  Map<String, dynamic> _supabaseRowToDocument(Map<String, dynamic> row) {
+    final type = row['document_type']?.toString() ?? 'أخرى';
+    final expiry = row['expiry_date']?.toString();
+
+    return {
+      'id': row['id']?.toString() ?? 'doc_${DateTime.now().microsecondsSinceEpoch}',
+      'employee_id': row['employee_id']?.toString(),
+      'type': type,
+      'icon': _iconForDocumentType(type),
+      'name': row['document_name']?.toString() ?? '',
+      'number': row['document_number']?.toString() ?? '',
+      'expiry': expiry ?? '',
+      'notes': row['notes']?.toString() ?? '',
+    };
+  }
+
+  Future<void> _syncDocumentsWithSupabase({
+    bool onInitialLoad = false,
+  }) async {
+    try {
+      final service = SupabaseService.instance;
+      if (!service.isSignedIn) return;
+
+      final user = service.currentUser;
+      if (user == null) return;
+
+      final client = service.client;
+      final response = await client
+          .from('documents')
+          .select()
+          .eq('user_id', user.id);
+
+      final remoteRows = List<Map<String, dynamic>>.from(
+        (response as List).map(
+          (row) => Map<String, dynamic>.from(row as Map),
+        ),
+      );
+
+      _ensureDocumentIds();
+
+      // أول اتصال: إذا كانت السحابة فارغة، ننقل البيانات المحلية إليها.
+      if (remoteRows.isEmpty && _documents.isNotEmpty) {
+        await _uploadAllDocumentsToSupabase(user.id);
+        return;
+      }
+
+      // عند وجود بيانات سحابية، تكون هي المصدر المركزي للأجهزة المرتبطة
+      // بالحساب، مع الاحتفاظ بالبيانات المحلية إذا لم تكن هناك بيانات سحابية.
+      if (remoteRows.isNotEmpty) {
+        final remoteDocuments = remoteRows
+            .map(_supabaseRowToDocument)
+            .where((document) =>
+                (document['name']?.toString() ?? '').trim().isNotEmpty ||
+                (document['number']?.toString() ?? '').trim().isNotEmpty)
+            .toList();
+
+        // ندمج المحلي مع السحابي بدل حذف أي وثيقة محلية جديدة.
+        final merged = <String, Map<String, dynamic>>{};
+        for (final document in _documents) {
+          final id = document['id']?.toString().trim() ?? '';
+          if (id.isNotEmpty) merged[id] = Map<String, dynamic>.from(document);
+        }
+        for (final document in remoteDocuments) {
+          final id = document['id']?.toString().trim() ?? '';
+          if (id.isNotEmpty) merged[id] = Map<String, dynamic>.from(document);
+        }
+
+        if (mounted) {
+          setState(() {
+            _documents
+              ..clear()
+              ..addAll(merged.values);
+          });
+        } else {
+          _documents
+            ..clear()
+            ..addAll(merged.values);
+        }
+
+        _ensureDocumentIds();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_documentsStorageKey, jsonEncode(_documents));
+
+        // ارفع أي وثائق محلية كانت غير موجودة في السحابة.
+        await _uploadAllDocumentsToSupabase(user.id);
+
+        try {
+          await NotificationService.instance.syncStoredData();
+        } catch (e) {
+          debugPrint('DOCUMENT NOTIFICATION SYNC SKIPPED => $e');
+        }
+
+        if (mounted) {
+          try {
+            await context.read<AlertProvider>().refreshDocuments();
+          } catch (e) {
+            debugPrint('DOCUMENT ALERT REFRESH ERROR => $e');
+          }
+        }
+      } else if (!onInitialLoad) {
+        await _uploadAllDocumentsToSupabase(user.id);
+      }
+    } catch (_) {
+      // Supabase اختياري في هذه المرحلة؛ فشل الشبكة لا يمنع استخدام التطبيق محلياً.
+    }
+  }
+
+  Future<void> _uploadAllDocumentsToSupabase(String userId) async {
+    if (_documents.isEmpty) return;
+
+    _ensureDocumentIds();
+
+    final rows = _documents
+        .map((document) => _documentToSupabaseRow(document, userId))
+        .toList();
+
+    await SupabaseService.instance.client
+        .from('documents')
+        .upsert(rows, onConflict: 'user_id,id');
+  }
+
+  Future<void> _upsertDocumentToSupabase(
+    Map<String, dynamic> document,
+  ) async {
+    try {
+      final service = SupabaseService.instance;
+      final user = service.currentUser;
+      if (!service.isSignedIn || user == null) return;
+
+      _ensureDocumentIds();
+
+      await service.client.from('documents').upsert(
+            _documentToSupabaseRow(document, user.id),
+            onConflict: 'user_id,id',
+          );
+    } catch (_) {
+      // تبقى النسخة المحلية محفوظة حتى لو تعذر الاتصال بالسحابة.
+    }
+  }
+
+  Future<void> _deleteDocumentFromSupabase(
+    Map<String, dynamic> document,
+  ) async {
+    try {
+      final service = SupabaseService.instance;
+      final user = service.currentUser;
+      final id = document['id']?.toString().trim() ?? '';
+
+      if (!service.isSignedIn || user == null || id.isEmpty) return;
+
+      await service.client
+          .from('documents')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('id', id);
+    } catch (_) {
+      // الحذف المحلي لا يعتمد على نجاح الاتصال بالسحابة.
+    }
   }
 
   Future<void> _saveDocuments() async {
@@ -2146,6 +2447,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     if (!confirmed || !context.mounted) return;
 
     final number = document['number']?.toString() ?? '';
+    final documentId = document['id']?.toString().trim() ?? '';
 
     setState(() {
       _documents.remove(document);
@@ -2153,6 +2455,13 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
     _documentLogs.remove(number);
     await _saveDocumentsAndRefreshAlerts();
+
+    // حذف السجل المقابل من Supabase بعد نجاح الحذف المحلي.
+    if (documentId.isNotEmpty) {
+      await _deleteDocumentFromSupabase({
+        'id': documentId,
+      });
+    }
 
     if (!context.mounted) return;
     await ActionResultDialog.show(
