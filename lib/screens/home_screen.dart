@@ -112,12 +112,18 @@ class _HomeScreenState extends State<HomeScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xffF7F9FC),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(10),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              10,
+              8,
+              10,
+              12 + MediaQuery.of(context).padding.bottom,
+            ),
           child: Column(
             children: [
               Container(
-                height: 68,
+                constraints: const BoxConstraints(minHeight: 62, maxHeight: 68),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
@@ -202,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
-                childAspectRatio: 3.35,
+                childAspectRatio: 3.05,
                 children: [
                   StatCard(
                     title: 'الموظفين',
@@ -281,6 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
+          ),
         ),
       ),
     );
@@ -311,7 +318,7 @@ class StatCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: 50,
+        constraints: const BoxConstraints(minHeight: 48),
         padding:
             const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
@@ -389,7 +396,7 @@ class InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),

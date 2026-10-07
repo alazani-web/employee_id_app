@@ -16,7 +16,12 @@ import '../widgets/renewal_dialog.dart';
 import '../widgets/action_result_dialog.dart';
 
 class AlertsScreen extends StatefulWidget {
-  const AlertsScreen({super.key});
+  final VoidCallback? onBack;
+
+  const AlertsScreen({
+    super.key,
+    this.onBack,
+  });
 
   @override
   State<AlertsScreen> createState() => _AlertsScreenState();
@@ -321,7 +326,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Color(0xff111827)),
-            onPressed: () => Navigator.pop(context),
+            onPressed: widget.onBack ?? () => Navigator.pop(context),
           ),
           title: const Text(
             'نظام إدارة الهويات',

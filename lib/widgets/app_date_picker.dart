@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:hijri_core/hijri_core.dart' as hijri;
 
@@ -358,44 +359,69 @@ class _UnifiedDatePickerDialogState extends State<_UnifiedDatePickerDialog> {
 
 
 
-  void _changeDay(int value) {
-    setState(() {
-      _day = value.clamp(1, _daysInCurrentMonth).toInt();
-      _selectedGregorian = _selectedGregorianFromWheels();
-    });
+  void _selectionHaptic() {
+    HapticFeedback.selectionClick();
   }
 
+  void _changeDay(int value) {
+    if (value == _day) return;
 
+    setState(() {
+      _day = value;
+      _selectedGregorian = _selectedGregorianFromWheels();
+    });
+
+    _selectionHaptic();
+  }
 
   void _changeMonth(int value) {
+    if (value == _month) return;
+
+    final oldDay = _day;
+
     setState(() {
-      _month = value.clamp(1, 12).toInt();
-      if (_day > _daysInCurrentMonth) _day = _daysInCurrentMonth;
+      _month = value;
+      if (_day > _daysInCurrentMonth) {
+        _day = _daysInCurrentMonth;
+      }
       _selectedGregorian = _selectedGregorianFromWheels();
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _syncWheelControllers();
-    });
+    // لا نحرك عمود اليوم إلا إذا تغيّر الحد الأقصى للأيام فعليًا.
+    if (_day != oldDay) {
+      _dayController?.animateToItem(
+        _day - 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+      );
+    }
+
+    _selectionHaptic();
   }
-
-
 
   void _changeYear(int value) {
+    if (value == _year) return;
+
+    final oldDay = _day;
+
     setState(() {
       _year = value;
-      if (_day > _daysInCurrentMonth) _day = _daysInCurrentMonth;
+      if (_day > _daysInCurrentMonth) {
+        _day = _daysInCurrentMonth;
+      }
       _selectedGregorian = _selectedGregorianFromWheels();
     });
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _syncWheelControllers();
-    });
+    if (_day != oldDay) {
+      _dayController?.animateToItem(
+        _day - 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOutCubic,
+      );
+    }
+
+    _selectionHaptic();
   }
-
-
 
   String get _selectedTitle {
 
@@ -997,7 +1023,7 @@ class _UnifiedDatePickerDialogState extends State<_UnifiedDatePickerDialog> {
 
         perspective: 0.002,
 
-        physics: const FixedExtentScrollPhysics(),
+        physics: const FixedExtentScrollPhysics(parent: BouncingScrollPhysics()),
 
         overAndUnderCenterOpacity: 0.42,
 
