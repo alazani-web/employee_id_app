@@ -318,10 +318,30 @@ class NotificationService {
   }) async {
     await initialize();
 
+    // إلغاء الإشعارات الحالية بالطريقة الجديدة.
+    // نلغي جميع الفواصل المستخدمة في هذا النوع حتى لا يبقى أي موعد قديم.
     for (final days in const [30, 15, 7, 3, 1, 0]) {
       await _notifications.cancel(
         id: _notificationId(type, itemId, days),
       );
+    }
+
+    // مهم: قد تكون هناك إشعارات قديمة تم جدولتها بمعرّف مختلف
+    // (مثلاً قبل تعديل طريقة إنشاء الـ ID). لذلك نبحث في الإشعارات
+    // المجدولة نفسها بواسطة الـ payload ونلغي أي إشعار يخص هذا العنصر.
+    try {
+      final pending = await _notifications.pendingNotificationRequests();
+      final expectedPayload = '${type.name}:$itemId';
+
+      for (final notification in pending) {
+        if (notification.payload == expectedPayload) {
+          await _notifications.cancel(id: notification.id);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Notification payload cancellation error: $e');
+      }
     }
   }
 

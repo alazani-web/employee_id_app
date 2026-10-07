@@ -12,10 +12,15 @@ class SettingsScreen extends StatefulWidget {
   final String selectedPage;
   final VoidCallback? onBack;
 
+  // يتم استدعاؤه فور تغيير حالة قفل التطبيق
+  // حتى تتحدث App مباشرةً بدون إعادة تشغيل.
+  final ValueChanged<bool>? onLockStateChanged;
+
   const SettingsScreen({
     super.key,
     this.selectedPage = "settings",
     this.onBack,
+    this.onLockStateChanged,
   });
 
   @override
@@ -117,10 +122,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: Column(
             children: [
-              if (currentPage != "activation") ...[
-                _buildPageHeader(),
-                const SizedBox(height: 14),
-              ],
+              _buildPageHeader(),
+              const SizedBox(height: 14),
               _buildSelectedContent(),
             ],
           ),
@@ -173,7 +176,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   padding: const EdgeInsets.symmetric(vertical: 6),
   child: Row(
     children: [
-      if (currentPage == "alerts")
+      if (widget.onBack != null)
         IconButton(
           onPressed: widget.onBack,
           tooltip: "رجوع",
@@ -224,7 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return _buildGeneralSettingsView();
 
       case "backup":
-        return const BackupScreen();
+        return BackupScreen(onBack: widget.onBack);
 
       case "activation":
         return const ActivationScreen();
@@ -462,10 +465,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildSwitchRow(
             title: "تفعيل قفل التطبيق",
             value: isLockEnabled,
-            onChanged: (value) {
+            onChanged: (value) async {
               setState(() {
                 isLockEnabled = value;
               });
+
+              if (!value) {
+                final prefs = await SharedPreferences.getInstance();
+
+                // الإيقاف الفوري للقفل.
+                await prefs.setBool('app_lock_enabled', false);
+                await prefs.setBool('app_lock_biometric', false);
+                await prefs.remove('app_lock_pin');
+
+                if (!mounted) return;
+
+                widget.onLockStateChanged?.call(false);
+                _showMessage("تم إيقاف قفل التطبيق");
+              }
             },
           ),
 
@@ -1670,6 +1687,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await prefs.setBool('app_lock_enabled', false);
       await prefs.remove('app_lock_pin');
       await prefs.setBool('app_lock_biometric', false);
+
+      if (!mounted) return;
+
+      widget.onLockStateChanged?.call(false);
       _showMessage("تم إيقاف قفل التطبيق");
       return;
     }
@@ -1696,6 +1717,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await prefs.setBool('app_lock_enabled', true);
     await prefs.setString('app_lock_pin', pin);
     await prefs.setBool('app_lock_biometric', faceIdEnabled);
+
+    if (!mounted) return;
+
+    // تحديث App مباشرةً بدون إعادة تشغيل التطبيق.
+    widget.onLockStateChanged?.call(true);
 
     _showMessage("تم حفظ إعدادات القفل بنجاح");
   }

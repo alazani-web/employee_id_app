@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../widgets/action_sheet.dart';
 import 'package:provider/provider.dart';
 import '../providers/employee_provider.dart';
 import '../models/employee.dart';
 import '../utils/renewal_calculator.dart';
 import '../widgets/action_result_dialog.dart';
 import '../widgets/renewal_dialog.dart';
+import '../widgets/app_date_picker.dart';
 import 'import_screen.dart';
 
 class EmployeesScreen extends StatefulWidget {
@@ -60,287 +62,9 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 
   Future<String?> _showCustomDatePicker(BuildContext context, {DateTime? initialDate}) async {
-    DateTime selectedDate = initialDate ?? DateTime.now();
-    DateTime displayedMonth = DateTime(selectedDate.year, selectedDate.month, 1);
-    bool isYearMonthPickerOpen = false;
-
-    return await showDialog<String>(
-      context: context,
-      builder: (BuildContext ctx) {
-        return StatefulBuilder(
-          builder: (context, setPickerState) {
-            final daysInMonth = DateUtils.getDaysInMonth(displayedMonth.year, displayedMonth.month);
-            final firstDayOffset = DateTime(displayedMonth.year, displayedMonth.month, 1).weekday % 7;
-
-            final monthNames = [
-              "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
-              "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
-            ];
-
-            return Directionality(
-              textDirection: TextDirection.rtl,
-              child: Dialog(
-                insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-                clipBehavior: Clip.antiAlias,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 340),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      InkWell(
-                        onTap: () {
-                          setPickerState(() {
-                            isYearMonthPickerOpen = !isYearMonthPickerOpen;
-                          });
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          color: const Color(0xff1565C0),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    "تاريخ الاختيار (انقر لتغيير السنة والشهر)",
-                                    style: TextStyle(color: Colors.white70, fontSize: 11),
-                                  ),
-                                  Icon(Icons.unfold_more, color: Colors.white.withValues(alpha: 0.8), size: 16),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "${monthNames[displayedMonth.month - 1]}، ${displayedMonth.year}",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (isYearMonthPickerOpen) ...[
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          margin: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xffF8FAFC),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("اختر السنة:", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 6),
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: Colors.grey.shade200),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<int>(
-                                    value: displayedMonth.year,
-                                    isExpanded: true,
-                                    items: List.generate(20, (index) => 2020 + index).map((year) {
-                                      return DropdownMenuItem<int>(
-                                        value: year,
-                                        child: Text("$year", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                      );
-                                    }).toList(),
-                                    onChanged: (val) {
-                                      if (val != null) {
-                                        setPickerState(() {
-                                          displayedMonth = DateTime(val, displayedMonth.month, 1);
-                                        });
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              const Text("اختر الشهر:", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 8),
-                              GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: 12,
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  childAspectRatio: 2.2,
-                                  mainAxisSpacing: 8,
-                                  crossAxisSpacing: 8,
-                                ),
-                                itemBuilder: (context, index) {
-                                  final isSelected = displayedMonth.month == index + 1;
-                                  return InkWell(
-                                    onTap: () {
-                                      setPickerState(() {
-                                        displayedMonth = DateTime(displayedMonth.year, index + 1, 1);
-                                        isYearMonthPickerOpen = false;
-                                      });
-                                    },
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Container(
-                                      alignment: Alignment.center,
-                                      decoration: BoxDecoration(
-                                        color: isSelected ? const Color(0xff1565C0) : Colors.white,
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(color: isSelected ? const Color(0xff1565C0) : Colors.grey.shade200),
-                                      ),
-                                      child: Text(
-                                        monthNames[index],
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                          color: isSelected ? Colors.white : Colors.black87,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ] else ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                decoration: const BoxDecoration(color: Color(0xffF8FAFC), shape: BoxShape.circle),
-                                child: IconButton(
-                                  icon: const Icon(Icons.chevron_right, color: Colors.black87, size: 20),
-                                  onPressed: () {
-                                    setPickerState(() {
-                                      displayedMonth = DateTime(displayedMonth.year, displayedMonth.month - 1, 1);
-                                    });
-                                  },
-                                ),
-                              ),
-                              Text(
-                                "${monthNames[displayedMonth.month - 1]} ${displayedMonth.year}",
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                              ),
-                              Container(
-                                decoration: const BoxDecoration(color: Color(0xffF8FAFC), shape: BoxShape.circle),
-                                child: IconButton(
-                                  icon: const Icon(Icons.chevron_left, color: Colors.black87, size: 20),
-                                  onPressed: () {
-                                    setPickerState(() {
-                                      displayedMonth = DateTime(displayedMonth.year, displayedMonth.month + 1, 1);
-                                    });
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: const [
-                              _DayLabel("ح"),
-                              _DayLabel("ن"),
-                              _DayLabel("ث"),
-                              _DayLabel("ر"),
-                              _DayLabel("خ"),
-                              _DayLabel("ج"),
-                              _DayLabel("س"),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: daysInMonth + firstDayOffset,
-                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 7,
-                              mainAxisSpacing: 4,
-                              crossAxisSpacing: 4,
-                            ),
-                            itemBuilder: (context, index) {
-                              if (index < firstDayOffset) {
-                                return const SizedBox.shrink();
-                              }
-                              final dayNumber = index - firstDayOffset + 1;
-                              final isSelected = selectedDate.year == displayedMonth.year &&
-                                  selectedDate.month == displayedMonth.month &&
-                                  selectedDate.day == dayNumber;
-
-                              return InkWell(
-                                onTap: () {
-                                  final picked = DateTime(displayedMonth.year, displayedMonth.month, dayNumber);
-                                  final formatted = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
-                                  Navigator.pop(ctx, formatted);
-                                },
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? const Color(0xffEBF3FE) : Colors.transparent,
-                                    border: isSelected ? Border.all(color: const Color(0xff1565C0), width: 1.5) : null,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    "$dayNumber",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                      color: isSelected ? const Color(0xff1565C0) : Colors.black87,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 44,
-                          child: TextButton(
-                            style: TextButton.styleFrom(
-                              backgroundColor: const Color(0xffF1F5F9),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            ),
-                            onPressed: () => Navigator.pop(ctx, null),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.close, size: 16, color: Colors.black87),
-                                SizedBox(width: 6),
-                                Text("إلغاء", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 13)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
+    return AppDatePicker.show(
+      context,
+      initialDate: initialDate ?? DateTime.now(),
     );
   }
 
@@ -522,7 +246,8 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
                         final statusData = _getCalculatedStatus(emp.expiryDate);
 
                         return InkWell(
-                          onTap: () => _showEmployeeActionsModal(context, emp),
+                          onTap: null,
+                          onLongPress: () => _showEmployeeActionsModal(context, emp),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               vertical: 12,
@@ -815,149 +540,41 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
   }
 
   void _showEmployeeActionsModal(BuildContext context, Employee emp) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          backgroundColor: Colors.white,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 360),
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: const Color(0xffF3F4F6),
-                      radius: 16,
-                      child: IconButton(
-                        icon: const Icon(Icons.close, size: 16, color: Colors.grey),
-                        onPressed: () => Navigator.pop(ctx),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xffEFF6FF),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.edit_note, color: Color(0xff2563EB), size: 20),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                const Text("إجراءات الموظف", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 2),
-                Text(emp.name, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _actionButton(
-                        label: "السجل",
-                        icon: Icons.visibility_outlined,
-                        color: const Color(0xff2563EB),
-                        bgColor: const Color(0xffF0F5FF),
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _showLogsDialog(context, emp);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _actionButton(
-                        label: "تعديل",
-                        icon: Icons.edit_outlined,
-                        color: const Color(0xff2563EB),
-                        bgColor: const Color(0xffF0F5FF),
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _showEditEmployeeDialog(context, emp);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _actionButton(
-                        label: "تجديد",
-                        icon: Icons.autorenew,
-                        color: const Color(0xff16A34A),
-                        bgColor: const Color(0xffF0FDF4),
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _showRenewDialog(context, emp);
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _actionButton(
-                        label: "حذف",
-                        icon: Icons.delete_outline,
-                        color: const Color(0xffDC2626),
-                        bgColor: const Color(0xffFEF2F2),
-                        onTap: () {
-                          Navigator.pop(ctx);
-                          _confirmDelete(context, emp);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  height: 42,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xffF3F4F6),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: const Text("إغلاق", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 13)),
-                  ),
-                ),
-              ],
-            ),
-          ),
+    ActionSheet.show(
+      context,
+      title: 'إجراءات الموظف',
+      subtitle: emp.name,
+      headerIcon: Icons.edit_note_rounded,
+      actions: [
+        ActionSheetItem(
+          label: 'السجل',
+          icon: Icons.visibility_outlined,
+          iconColor: const Color(0xff2563EB),
+          backgroundColor: const Color(0xffF0F5FF),
+          onTap: () => _showLogsDialog(context, emp),
         ),
-      ),
-    );
-  }
-
-  Widget _actionButton({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required Color bgColor,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        height: 44,
-        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
-          ],
+        ActionSheetItem(
+          label: 'تعديل',
+          icon: Icons.edit_outlined,
+          iconColor: const Color(0xff2563EB),
+          backgroundColor: const Color(0xffF0F5FF),
+          onTap: () => _showEditEmployeeDialog(context, emp),
         ),
-      ),
+        ActionSheetItem(
+          label: 'تجديد',
+          icon: Icons.autorenew_rounded,
+          iconColor: const Color(0xff16A34A),
+          backgroundColor: const Color(0xffF0FDF4),
+          onTap: () => _showRenewDialog(context, emp),
+        ),
+        ActionSheetItem(
+          label: 'حذف',
+          icon: Icons.delete_outline_rounded,
+          iconColor: const Color(0xffDC2626),
+          backgroundColor: const Color(0xffFEF2F2),
+          onTap: () => _confirmDelete(context, emp),
+        ),
+      ],
     );
   }
 

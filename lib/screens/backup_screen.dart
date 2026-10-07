@@ -10,7 +10,12 @@ import '../services/notification_service.dart';
 import '../widgets/top_message.dart';
 
 class BackupScreen extends StatefulWidget {
-  const BackupScreen({super.key});
+  final VoidCallback? onBack;
+
+  const BackupScreen({
+    super.key,
+    this.onBack,
+  });
 
   @override
   State<BackupScreen> createState() => _BackupScreenState();
@@ -158,10 +163,10 @@ class _BackupScreenState extends State<BackupScreen> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
-      child: ListView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildHeader(),
-          const SizedBox(height: 14),
+          _buildHeader(),          const SizedBox(height: 14),
           _buildSection(
             title: 'النسخ المحلي',
             subtitle: 'حفظ واستعادة بيانات التطبيق على الجهاز',

@@ -113,16 +113,16 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xffF7F9FC),
         body: SingleChildScrollView(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(10),
           child: Column(
             children: [
               Container(
-                height: 78,
+                height: 68,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
                   mainAxisAlignment:
@@ -137,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           'لوحة التحكم الرئيسية',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -146,14 +146,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           'ملخص شامل لحالة النظام',
                           style: TextStyle(
                             color: Colors.grey,
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
                         color: const Color(0xffEFF4FF),
                         borderRadius:
@@ -167,14 +167,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             'اليوم',
                             style: TextStyle(
                               color: Color(0xff2864D7),
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           Text(
                             _currentWeekday,
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -193,16 +193,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
 
               GridView.count(
                 shrinkWrap: true,
                 physics:
                     const NeverScrollableScrollPhysics(),
                 crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 2.8,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 3.35,
                 children: [
                   StatCard(
                     title: 'الموظفين',
@@ -259,14 +259,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     'مفتاح التفعيل: مفعل\nالأيام المتبقية: 12512 يوم',
                 button: 'إدارة الترخيص',
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SettingsScreen(
-                        selectedPage: 'activation',
-                      ),
-                    ),
-                  );
+                  // افتح صفحة التفعيل من خلال نظام التنقل الرئيسي
+                  // حتى يظهر زر الرجوع ولا يتم إنشاء شاشة Settings ثانية.
+                  widget.onNavigate?.call('activation');
                 },
               ),
 
@@ -279,14 +274,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     'آخر نسخة احتياطية\nلا توجد نسخة محفوظة',
                 button: 'إنشاء نسخة احتياطية',
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SettingsScreen(
-                        selectedPage: 'backup',
-                      ),
-                    ),
-                  );
+                  // افتح النسخ الاحتياطي من خلال نظام التنقل الرئيسي
+                  // حتى يظهر زر الرجوع ولا يتم إنشاء شاشة Settings ثانية.
+                  widget.onNavigate?.call('backup');
                 },
               ),
             ],
@@ -319,14 +309,14 @@ class StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        height: 55,
+        height: 50,
         padding:
             const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisAlignment:
@@ -341,7 +331,7 @@ class StatCard extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: FontWeight.bold,
                     color: Color(0xff7A8495),
                   ),
@@ -349,7 +339,7 @@ class StatCard extends StatelessWidget {
                 Text(
                   count,
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
@@ -358,15 +348,15 @@ class StatCard extends StatelessWidget {
             ),
 
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(5),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
               ),
               child: SvgPicture.asset(
                 icon,
-                width: 20,
-                height: 20,
+                width: 18,
+                height: 18,
                 colorFilter: ColorFilter.mode(
                   color,
                   BlendMode.srcIn,
@@ -399,10 +389,10 @@ class InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment:
@@ -413,15 +403,15 @@ class InfoCard extends StatelessWidget {
                 MainAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(5),
                 decoration: const BoxDecoration(
                   color: Color(0xffEFF4FF),
                   shape: BoxShape.circle,
                 ),
                 child: SvgPicture.asset(
                   icon,
-                  width: 20,
-                  height: 20,
+                  width: 18,
+                  height: 18,
                   colorFilter:
                       const ColorFilter.mode(
                     Color(0xff2864D7),
@@ -435,7 +425,7 @@ class InfoCard extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -454,10 +444,10 @@ class InfoCard extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
           SizedBox(
-            height: 40,
+            height: 36,
             child: ElevatedButton(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(
@@ -472,7 +462,7 @@ class InfoCard extends StatelessWidget {
                 button,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
               ),

@@ -12,7 +12,6 @@ import 'screens/settings_screen.dart';
 import 'widgets/app_header.dart';
 import 'widgets/bottom_navigation.dart';
 import 'widgets/side_menu.dart';
-import 'widgets/app_lock_screen.dart';
 import 'providers/alert_provider.dart';
 
 class App extends StatefulWidget {
@@ -110,6 +109,19 @@ class _AppState extends State<App> with WidgetsBindingObserver {
     return false;
   }
 
+  void _handleLockStateChanged(bool enabled) {
+    if (!mounted) return;
+
+    setState(() {
+      _lockEnabled = enabled;
+
+      // عند إيقاف القفل يجب إزالة شاشة القفل فورًا.
+      if (!enabled) {
+        _isLocked = false;
+      }
+    });
+  }
+
   void navigate(String page) {
     if (!mounted) return;
 
@@ -152,6 +164,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
       return SettingsScreen(
         selectedPage: currentPage,
         onBack: () => navigate('home'),
+        onLockStateChanged: _handleLockStateChanged,
       );
     }
 
@@ -224,8 +237,282 @@ class _AppState extends State<App> with WidgetsBindingObserver {
         if (_isLocked)
           AppLockScreen(
             onUnlock: _verifyPin,
+            onBackToHome: () {
+              setState(() {
+                currentPage = 'home';
+                _isLocked = false;
+              });
+            },
           ),
       ],
+    );
+  }
+}
+
+/// شاشة قفل التطبيق
+/// زر الرجوع يعيد المستخدم مباشرة إلى الصفحة الرئيسية.
+class AppLockScreen extends StatefulWidget {
+  final Future<bool> Function(String pin) onUnlock;
+  final VoidCallback? onBackToHome;
+
+  const AppLockScreen({
+    super.key,
+    required this.onUnlock,
+    this.onBackToHome,
+  });
+
+  @override
+  State<AppLockScreen> createState() => _AppLockScreenState();
+}
+
+class _AppLockScreenState extends State<AppLockScreen> {
+  final TextEditingController _pinController = TextEditingController();
+
+  bool _checking = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _unlock() async {
+    final pin = _pinController.text.trim();
+
+    if (pin.isEmpty) {
+      setState(() {
+        _error = 'أدخل الرقم السري';
+      });
+      return;
+    }
+
+    setState(() {
+      _checking = true;
+      _error = null;
+    });
+
+    final success = await widget.onUnlock(pin);
+
+    if (!mounted) return;
+
+    setState(() {
+      _checking = false;
+    });
+
+    if (!success) {
+      setState(() {
+        _error = 'الرقم السري غير صحيح';
+      });
+      _pinController.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Material(
+        color: const Color(0xffF7F9FC),
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(
+                          color: const Color(0xffE5E7EB),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x12000000),
+                            blurRadius: 20,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 68,
+                            height: 68,
+                            decoration: BoxDecoration(
+                              color: const Color(0xffEFF6FF),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(
+                              Icons.lock_outline_rounded,
+                              size: 34,
+                              color: Color(0xff2864D7),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          const Text(
+                            'التطبيق مقفل',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xff111827),
+                            ),
+                          ),
+                          const SizedBox(height: 7),
+                          const Text(
+                            'أدخل الرقم السري للمتابعة',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xff7A8495),
+                            ),
+                          ),
+                          const SizedBox(height: 22),
+                          TextField(
+                            controller: _pinController,
+                            obscureText: true,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            maxLength: 20,
+                            onSubmitted: (_) => _unlock(),
+                            decoration: InputDecoration(
+                              counterText: '',
+                              hintText: 'الرقم السري',
+                              filled: true,
+                              fillColor: const Color(0xffF8FAFC),
+                              prefixIcon: const Icon(
+                                Icons.lock_outline_rounded,
+                                color: Color(0xff64748B),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(13),
+                                borderSide: const BorderSide(
+                                  color: Color(0xffE5E7EB),
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(13),
+                                borderSide: const BorderSide(
+                                  color: Color(0xffE5E7EB),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(13),
+                                borderSide: const BorderSide(
+                                  color: Color(0xff2864D7),
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (_error != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              _error!,
+                              style: const TextStyle(
+                                color: Color(0xffDC2626),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 46,
+                            child: ElevatedButton.icon(
+                              onPressed: _checking ? null : _unlock,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xff2864D7),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                              ),
+                              icon: _checking
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.lock_open_rounded,
+                                      size: 19,
+                                    ),
+                              label: Text(
+                                _checking ? 'جاري التحقق...' : 'فتح التطبيق',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // زر الرجوع إلى الصفحة الرئيسية
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  elevation: 0,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: widget.onBackToHome,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 13,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xffE5E7EB),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 18,
+                            color: Color(0xff374151),
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'الرئيسية',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xff374151),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

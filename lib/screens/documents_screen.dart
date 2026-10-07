@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../widgets/app_date_picker.dart';
 import '../widgets/confirm_delete_dialog.dart';
+import '../widgets/action_result_dialog.dart';
 import '../providers/alert_provider.dart';
 import '../services/notification_service.dart';
 
@@ -720,7 +721,13 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                         }
                                       }
                                       await _saveDocumentsAndRefreshAlerts();
-                                      _showMessage("تم تعديل الوثيقة بنجاح");
+                                      await ActionResultDialog.show(
+                                        context,
+                                        type: ActionResultType.success,
+                                        title: 'تم تعديل الوثيقة بنجاح',
+                                        name: name,
+                                        message: 'تم حفظ التعديلات وتحديث بيانات الوثيقة بنجاح.',
+                                      );
                                     } else {
                                       final newDocument = <String, dynamic>{
                                         'type': selectedType,
@@ -741,7 +748,13 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                         'تمت إضافة الوثيقة',
                                       );
                                       await _saveDocumentsAndRefreshAlerts();
-                                      _showMessage("تمت إضافة الوثيقة بنجاح");
+                                      await ActionResultDialog.show(
+                                        context,
+                                        type: ActionResultType.success,
+                                        title: 'تمت إضافة الوثيقة بنجاح',
+                                        name: name,
+                                        message: 'تم حفظ الوثيقة وإضافتها إلى القائمة بنجاح.',
+                                      );
                                     }
 
                                     Navigator.pop(dialogContext);
@@ -1968,10 +1981,18 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
 
                                     if (!dialogContext.mounted) return;
                                     Navigator.pop(dialogContext);
-                                    _showMessage(
-                                      document['type']?.toString() == 'السجل التجاري'
-                                          ? "تم تحديث موعد التأكيد السنوي بنجاح"
-                                          : "تم تجديد الوثيقة بنجاح",
+
+                                    if (!context.mounted) return;
+                                    await ActionResultDialog.show(
+                                      context,
+                                      type: ActionResultType.success,
+                                      title: document['type']?.toString() == 'السجل التجاري'
+                                          ? 'تم تحديث التأكيد السنوي بنجاح'
+                                          : 'تم تجديد الوثيقة بنجاح',
+                                      name: document['name']?.toString(),
+                                      message: document['type']?.toString() == 'السجل التجاري'
+                                          ? 'تم حفظ موعد التأكيد السنوي الجديد بنجاح.'
+                                          : 'تم حفظ تاريخ التجديد الجديد بنجاح.',
                                     );
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -2134,7 +2155,13 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     await _saveDocumentsAndRefreshAlerts();
 
     if (!context.mounted) return;
-    _showMessage("تم حذف الوثيقة من القائمة بنجاح");
+    await ActionResultDialog.show(
+      context,
+      type: ActionResultType.delete,
+      title: 'تم حذف الوثيقة بنجاح',
+      name: document['name']?.toString(),
+      message: 'تم حذف الوثيقة من قائمة الوثائق بنجاح.',
+    );
   }
 
   // ============================================================
@@ -2254,8 +2281,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     final statusBg = _statusBackground(status);
 
     return InkWell(
-      // فتح إجراءات الوثيقة بالضغط المطول فقط.
-      onTap: () => _showDocumentActions(context, document),
+      // فتح صندوق الإجراءات بالضغط المطول فقط.
+      onTap: null,
+      onLongPress: () => _showDocumentActions(context, document),
       child: Container(
         constraints: const BoxConstraints(minHeight: 82),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

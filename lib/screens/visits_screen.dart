@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:excel/excel.dart' as excel_lib;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../widgets/action_sheet.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -399,7 +400,8 @@ class _VisitsScreenState extends State<VisitsScreen> {
     return Material(
       color: Colors.white,
       child: InkWell(
-        onTap: () => _showActions(context, visit),
+        onTap: null,
+        onLongPress: () => _showActions(context, visit),
         child: Directionality(
           textDirection: TextDirection.ltr,
           child: Container(
@@ -692,12 +694,73 @@ class _VisitsScreenState extends State<VisitsScreen> {
     BuildContext context, {
     String? initial,
   }) async {
-    final parsed = _parseDate(initial ?? '');
-    final value = await AppDatePicker.show(
-      context,
-      initialDate: parsed ?? DateTime.now(),
-    );
-    return value;
+    try {
+      final parsed = _parseDateSafe(initial ?? '');
+      final value = await AppDatePicker.show(
+        context,
+        initialDate: parsed ?? DateTime.now(),
+      );
+      return value?.trim();
+    } catch (e, stackTrace) {
+      debugPrint('VISIT DATE PICKER ERROR: $e');
+      debugPrint(stackTrace.toString());
+      return null;
+    }
+  }
+
+  DateTime? _parseDateSafe(String value) {
+    var text = value.trim();
+    if (text.isEmpty) return null;
+
+    const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+    const westernDigits = '0123456789';
+    for (int i = 0; i < arabicDigits.length; i++) {
+      text = text.replaceAll(arabicDigits[i], westernDigits[i]);
+    }
+
+    text = text.replaceAll('/', '-');
+    if (text.contains('T')) text = text.split('T').first;
+    if (text.contains(' ')) text = text.split(' ').first;
+
+    final iso = DateTime.tryParse(text);
+    if (iso != null) {
+      return DateTime(iso.year, iso.month, iso.day);
+    }
+
+    final parts = text.split('-');
+    if (parts.length == 3) {
+      int? first = int.tryParse(parts[0]);
+      int? second = int.tryParse(parts[1]);
+      int? third = int.tryParse(parts[2]);
+
+      if (first != null && second != null && third != null) {
+        // dd-MM-yyyy
+        if (third >= 1000) {
+          final result = DateTime.tryParse(
+            '${third.toString().padLeft(4, '0')}-'
+            '${second.toString().padLeft(2, '0')}-'
+            '${first.toString().padLeft(2, '0')}',
+          );
+          if (result != null) {
+            return DateTime(result.year, result.month, result.day);
+          }
+        }
+
+        // yyyy-MM-dd
+        if (first >= 1000) {
+          final result = DateTime.tryParse(
+            '${first.toString().padLeft(4, '0')}-'
+            '${second.toString().padLeft(2, '0')}-'
+            '${third.toString().padLeft(2, '0')}',
+          );
+          if (result != null) {
+            return DateTime(result.year, result.month, result.day);
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   InputDecoration _inputStyle(String hint, {IconData? icon}) {
@@ -1163,165 +1226,44 @@ class _VisitsScreenState extends State<VisitsScreen> {
   }
 
   void _showActions(BuildContext context, Visit visit) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: Dialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'إجراءات الزيارة',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: dark,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => Navigator.pop(dialogContext),
-                          icon: const Icon(Icons.close, size: 21),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      visit.visitorName,
-                      style: const TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _actionTile(
-                            'تعديل', Icons.edit_outlined, primaryBlue,
-                            const Color(0xFFEFF6FF), () {
-                              Navigator.pop(dialogContext);
-                              _showEditVisit(context, visit);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _actionTile(
-                            'السجل', Icons.history, purple,
-                            const Color(0xFFF5F3FF), () {
-                              Navigator.pop(dialogContext);
-                              _showLogs(context, visit);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _actionTile(
-                            'حذف', Icons.delete_outline,
-                            const Color(0xFFDC2626), const Color(0xFFFEF2F2), () {
-                              Navigator.pop(dialogContext);
-                              _confirmDelete(context, visit);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _actionTile(
-                            'تجديد', Icons.autorenew,
-                            const Color(0xFF16A34A), const Color(0xFFF0FDF4), () {
-                              Navigator.pop(dialogContext);
-                              _showRenewVisit(context, visit);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(dialogContext),
-                        style: TextButton.styleFrom(
-                          backgroundColor: const Color(0xFF374151),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(13),
-                          ),
-                        ),
-                        child: const Text(
-                          'إلغاء',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
+    ActionSheet.show(
+      context,
+      title: 'إجراءات الزيارة',
+      subtitle: visit.visitorName,
+      headerIcon: Icons.edit_note_rounded,
+      actions: [
+        ActionSheetItem(
+          label: 'تعديل',
+          icon: Icons.edit_outlined,
+          iconColor: primaryBlue,
+          backgroundColor: const Color(0xFFEFF6FF),
+          onTap: () => _showEditVisit(context, visit),
+        ),
+        ActionSheetItem(
+          label: 'السجل',
+          icon: Icons.history_rounded,
+          iconColor: purple,
+          backgroundColor: const Color(0xFFF5F3FF),
+          onTap: () => _showLogs(context, visit),
+        ),
+        ActionSheetItem(
+          label: 'حذف',
+          icon: Icons.delete_outline_rounded,
+          iconColor: const Color(0xFFDC2626),
+          backgroundColor: const Color(0xFFFEF2F2),
+          onTap: () => _confirmDelete(context, visit),
+        ),
+        ActionSheetItem(
+          label: 'تجديد',
+          icon: Icons.autorenew_rounded,
+          iconColor: const Color(0xFF16A34A),
+          backgroundColor: const Color(0xFFF0FDF4),
+          onTap: () => _showRenewVisit(context, visit),
+        ),
+      ],
     );
   }
 
-  Widget _actionTile(
-    String title,
-    IconData icon,
-    Color color,
-    Color background,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        height: 64,
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(.08)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 5),
-            Text(
-              title,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Future<void> _showEditVisit(BuildContext context, Visit visit) async {
     final name = TextEditingController(text: visit.visitorName);
@@ -1329,182 +1271,380 @@ class _VisitsScreenState extends State<VisitsScreen> {
     final visa = TextEditingController(text: visit.visaNumber);
     final border = TextEditingController(text: visit.borderNumber);
     final expiry = TextEditingController(text: visit.expiryDate);
-    final insurance =
-        TextEditingController(text: visit.insuranceExpiryDate);
+    final insurance = TextEditingController(text: visit.insuranceExpiryDate);
     final notes = TextEditingController(text: visit.notes);
 
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: Dialog(
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 22,
-              vertical: 20,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(25),
-            ),
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: 650,
-                maxHeight: MediaQuery.sizeOf(context).height * .90,
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: Dialog(
+              insetPadding: const EdgeInsets.symmetric(
+                horizontal: 35,
+                vertical: 35,
               ),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.edit_outlined, color: purple),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'تعديل بيانات الزيارة',
-                            style: TextStyle(
-                              color: dark,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: 410,
+                  maxHeight: MediaQuery.sizeOf(dialogContext).height * .72,
+                ),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F3FF),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.edit_outlined,
+                              color: purple,
+                              size: 19,
                             ),
                           ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 20),
-                    _section(
-                      title: 'معلومات الزائر',
-                      icon: Icons.person_outline,
-                      color: purpleDark,
-                      children: [
-                        _field('اسم الزائر', name),
-                        const SizedBox(height: 10),
-                        _field('رقم الجواز', passport, digitsOnly: true),
-                        const SizedBox(height: 10),
-                        _field('رقم التأشيرة', visa, digitsOnly: true),
-                        const SizedBox(height: 10),
-                        _field('رقم الحدود', border, digitsOnly: true),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _section(
-                      title: 'تواريخ الانتهاء',
-                      icon: Icons.calendar_month_outlined,
-                      color: primaryBlue,
-                      children: [
-                        _field(
-                          'تاريخ انتهاء الزيارة',
-                          expiry,
-                          readOnly: true,
-                          icon: Icons.calendar_month_outlined,
-                          onTap: () async {
-                            final value = await _pickDate(
-                              context,
-                              initial: expiry.text,
-                            );
-                            if (value != null) expiry.text = value;
-                          },
-                        ),
-                        const SizedBox(height: 10),
-                        _field(
-                          'تاريخ انتهاء التأمين',
-                          insurance,
-                          readOnly: true,
-                          icon: Icons.calendar_month_outlined,
-                          onTap: () async {
-                            final value = await _pickDate(
-                              context,
-                              initial: insurance.text,
-                            );
-                            if (value != null) insurance.text = value;
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _field('ملاحظات اختيارية...', notes, maxLines: 3),
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _button(
-                            'إلغاء',
-                            const Color(0xFF374151),
-                            () => Navigator.pop(dialogContext),
+                          const SizedBox(width: 9),
+                          const Expanded(
+                            child: Text(
+                              'تعديل بيانات الزيارة',
+                              style: TextStyle(
+                                color: dark,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _button(
-                            'حفظ التعديل',
-                            purple,
-                            () async {
-                              if (name.text.trim().isEmpty ||
-                                  expiry.text.trim().isEmpty ||
-                                  insurance.text.trim().isEmpty) {
-                                _showNotice(
-                                  context,
-                                  title: 'بيانات ناقصة',
-                                  message:
-                                      'يرجى استكمال الحقول المطلوبة.',
-                                  type: _NoticeType.warning,
-                                );
-                                return;
-                              }
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            onPressed: () => Navigator.pop(dialogContext),
+                            icon: const Icon(
+                              Icons.close,
+                              color: Color(0xFF6B7280),
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Divider(height: 1),
+                      const SizedBox(height: 10),
 
-                              final updated = visit.copyWith(
-                                visitorName: name.text.trim(),
-                                passportNumber: passport.text.trim(),
-                                visaNumber: visa.text.trim(),
-                                borderNumber: border.text.trim(),
-                                expiryDate: expiry.text.trim(),
-                                insuranceExpiryDate: insurance.text.trim(),
-                                notes: notes.text.trim(),
+                      // معلومات الزائر — بحجم مضغوط حتى لا تكون نافذة التعديل كبيرة.
+                      _sectionCompact(
+                        title: 'معلومات الزائر',
+                        icon: Icons.person_outline,
+                        color: purpleDark,
+                        children: [
+                          _fieldCompact('اسم الزائر', name),
+                          const SizedBox(height: 7),
+                          _fieldCompact('رقم الجواز', passport, digitsOnly: true),
+                          const SizedBox(height: 7),
+                          _fieldCompact('رقم التأشيرة', visa, digitsOnly: true),
+                          const SizedBox(height: 7),
+                          _fieldCompact('رقم الحدود', border, digitsOnly: true),
+                        ],
+                      ),
+                      const SizedBox(height: 9),
+
+                      // التواريخ — نستخدم dialogContext نفسه عند فتح منتقي التاريخ.
+                      _sectionCompact(
+                        title: 'تواريخ الانتهاء',
+                        icon: Icons.calendar_month_outlined,
+                        color: primaryBlue,
+                        children: [
+                          _fieldCompact(
+                            'تاريخ انتهاء الزيارة',
+                            expiry,
+                            readOnly: true,
+                            icon: Icons.calendar_month_outlined,
+                            onTap: () async {
+                              final value = await _pickDate(
+                                dialogContext,
+                                initial: expiry.text,
                               );
-
-                              await context
-                                  .read<VisitProvider>()
-                                  .updateVisit(updated);
-
-                              if (dialogContext.mounted) {
-                                Navigator.pop(dialogContext);
+                              if (!dialogContext.mounted) return;
+                              if (value != null && value.isNotEmpty) {
+                                expiry.text = value;
                               }
-                              if (!context.mounted) return;
-                              _showNotice(
-                                context,
-                                title: 'تم حفظ التعديل',
-                                message: 'تم تحديث بيانات الزيارة بنجاح.',
-                                type: _NoticeType.success,
-                              );
                             },
-                            icon: Icons.save_outlined,
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                          const SizedBox(height: 7),
+                          _fieldCompact(
+                            'تاريخ انتهاء التأمين',
+                            insurance,
+                            readOnly: true,
+                            icon: Icons.calendar_month_outlined,
+                            onTap: () async {
+                              final value = await _pickDate(
+                                dialogContext,
+                                initial: insurance.text,
+                              );
+                              if (!dialogContext.mounted) return;
+                              if (value != null && value.isNotEmpty) {
+                                insurance.text = value;
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 9),
+
+                      _fieldCompact(
+                        'ملاحظات اختيارية...',
+                        notes,
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 12),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buttonCompact(
+                              'إلغاء',
+                              const Color(0xFF374151),
+                              () => Navigator.pop(dialogContext),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _buttonCompact(
+                              'حفظ التعديل',
+                              purple,
+                              () async {
+                                final visitorName = name.text.trim();
+                                final newExpiry = expiry.text.trim();
+                                final newInsurance = insurance.text.trim();
+
+                                if (visitorName.isEmpty ||
+                                    newExpiry.isEmpty ||
+                                    newInsurance.isEmpty) {
+                                  _showNotice(
+                                    context,
+                                    title: 'بيانات ناقصة',
+                                    message: 'يرجى استكمال الحقول المطلوبة.',
+                                    type: _NoticeType.warning,
+                                  );
+                                  return;
+                                }
+
+                                final expiryDate = _parseDateSafe(newExpiry);
+                                final insuranceDate = _parseDateSafe(newInsurance);
+
+                                if (expiryDate == null || insuranceDate == null) {
+                                  _showNotice(
+                                    context,
+                                    title: 'تاريخ غير صالح',
+                                    message: 'يرجى اختيار تاريخ الانتهاء من التقويم ثم المحاولة مرة أخرى.',
+                                    type: _NoticeType.warning,
+                                  );
+                                  return;
+                                }
+
+                                // نحفظ التاريخ بصيغة موحدة حتى لا تسبب صيغة
+                                // التاريخ القادمة من التقويم مشكلة عند الحفظ
+                                // أو عند جدولة الإشعارات.
+                                final normalizedExpiry = _date(expiryDate);
+                                final normalizedInsurance = _date(insuranceDate);
+
+                                try {
+                                  final updated = visit.copyWith(
+                                    visitorName: visitorName,
+                                    passportNumber: passport.text.trim(),
+                                    visaNumber: visa.text.trim(),
+                                    borderNumber: border.text.trim(),
+                                    expiryDate: normalizedExpiry,
+                                    insuranceExpiryDate: normalizedInsurance,
+                                    notes: notes.text.trim(),
+                                  );
+
+                                  await context
+                                      .read<VisitProvider>()
+                                      .updateVisit(updated);
+
+                                  if (!dialogContext.mounted) return;
+                                  Navigator.pop(dialogContext);
+
+                                  if (!context.mounted) return;
+                                  await ActionResultDialog.show(
+                                    context,
+                                    type: ActionResultType.success,
+                                    title: 'تم تعديل الزيارة بنجاح',
+                                    name: updated.visitorName,
+                                    message: 'تم حفظ التعديلات وتحديث تاريخ الانتهاء بنجاح.',
+                                  );
+                                } catch (e, stackTrace) {
+                                  debugPrint('VISIT EDIT ERROR: $e');
+                                  debugPrint(stackTrace.toString());
+
+                                  if (!context.mounted) return;
+                                  _showNotice(
+                                    context,
+                                    title: 'تعذر حفظ التعديل',
+                                    message: 'حدث خطأ أثناء حفظ بيانات الزيارة. يرجى المحاولة مرة أخرى.',
+                                    type: _NoticeType.error,
+                                  );
+                                }
+                              },
+                              icon: Icons.save_outlined,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    } finally {
+      name.dispose();
+      passport.dispose();
+      visa.dispose();
+      border.dispose();
+      expiry.dispose();
+      insurance.dispose();
+      notes.dispose();
+    }
+  }
 
-    name.dispose();
-    passport.dispose();
-    visa.dispose();
-    border.dispose();
-    expiry.dispose();
-    insurance.dispose();
-    notes.dispose();
+  Widget _sectionCompact({
+    required String title,
+    required IconData icon,
+    required Color color,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(11, 10, 11, 11),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _fieldCompact(
+    String hint,
+    TextEditingController controller, {
+    IconData? icon,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    int maxLines = 1,
+    bool digitsOnly = false,
+  }) {
+    return TextField(
+      controller: controller,
+      readOnly: readOnly,
+      onTap: onTap,
+      maxLines: maxLines,
+      minLines: maxLines == 1 ? 1 : null,
+      textAlign: TextAlign.right,
+      keyboardType: digitsOnly ? TextInputType.number : TextInputType.text,
+      inputFormatters: digitsOnly
+          ? <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly]
+          : null,
+      style: const TextStyle(
+        color: dark,
+        fontSize: 12,
+      ),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(
+          color: Color(0xFFA1A1AA),
+          fontSize: 11,
+        ),
+        suffixIcon: icon == null
+            ? null
+            : Icon(icon, color: const Color(0xFF9CA3AF), size: 18),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 11,
+          vertical: 10,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(11),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(11),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(11),
+          borderSide: const BorderSide(color: purple, width: 1.2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buttonCompact(
+    String text,
+    Color color,
+    VoidCallback onPressed, {
+    IconData? icon,
+  }) {
+    return SizedBox(
+      height: 42,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 16),
+        label: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 11.5,
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(11),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _showRenewVisit(BuildContext context, Visit visit) async {
