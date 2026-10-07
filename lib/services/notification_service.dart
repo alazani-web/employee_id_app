@@ -192,25 +192,39 @@ class NotificationService {
 
     final now = tz.TZDateTime.now(tz.local);
 
-    final localDate = tz.TZDateTime(
-
+    var localDate = tz.TZDateTime(
       tz.local,
-
       scheduledDate.year,
-
       scheduledDate.month,
-
       scheduledDate.day,
-
       scheduledDate.hour,
-
       scheduledDate.minute,
-
     );
 
+    // إذا كان موعد التنبيه هو اليوم ولكن وقته مضى، لا نهمل التنبيه.
+    // نرسله بعد ثوانٍ قليلة حتى يظهر فورًا بعد إضافة الموظف.
+    // أما إذا كان يوم التنبيه قد مضى بالكامل، ننتقل للموعد التالي.
+    final today = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+    );
 
+    final scheduledDay = tz.TZDateTime(
+      tz.local,
+      localDate.year,
+      localDate.month,
+      localDate.day,
+    );
 
-    if (!localDate.isAfter(now)) return;
+    if (scheduledDay.isBefore(today)) {
+      return;
+    }
+
+    if (!localDate.isAfter(now)) {
+      localDate = now.add(const Duration(seconds: 5));
+    }
 
 
 
@@ -642,34 +656,101 @@ class NotificationService {
     }
 
   }
-
-
-
   Future<void> scheduleEmployee({
-
     required String employeeId,
-
     required String employeeName,
-
     required DateTime identityExpiry,
-
-  }) {
-
-    return scheduleItemReminders(
-
+  }) async {
+    await scheduleItemReminders(
       type: NotificationType.employee,
-
       itemId: employeeId,
-
       itemName: employeeName,
-
       expiryDate: identityExpiry,
-
     );
 
+    await showEmployeeExpiryAlertIfNeeded(
+      employeeId: employeeId,
+      employeeName: employeeName,
+      identityExpiry: identityExpiry,
+    );
   }
 
+  /// يظهر تنبيهًا فوريًا لموظف جديد إذا كانت هويته قريبة من الانتهاء.
+  /// يتم تسجيل التنبيه لكل دورة انتهاء حتى لا يتكرر عند كل تشغيل للتطبيق.
+  Future<void> showEmployeeExpiryAlertIfNeeded({
+    required String employeeId,
+    required String employeeName,
+    required DateTime identityExpiry,
+  }) async {
+    await initialize();
 
+    if (!await _notificationsEnabled()) return;
+    if (employeeId.trim().isEmpty) return;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final expiryDay = DateTime(
+      identityExpiry.year,
+      identityExpiry.month,
+      identityExpiry.day,
+    );
+
+    final daysRemaining = expiryDay.difference(today).inDays;
+    final prefs = await SharedPreferences.getInstance();
+    final alertWindow = prefs.getInt('notification_days') ?? 30;
+
+    if (daysRemaining < 0 || daysRemaining > alertWindow) return;
+
+    final expiryKey =
+        '${identityExpiry.year}-${identityExpiry.month.toString().padLeft(2, '0')}-${identityExpiry.day.toString().padLeft(2, '0')}';
+    final markerKey = 'expiry_alert_shown_employee_${employeeId}_$expiryKey';
+
+    if (prefs.getBool(markerKey) ?? false) return;
+
+    final cleanName =
+        employeeName.trim().isEmpty ? 'الموظف' : employeeName.trim();
+
+    final body = daysRemaining == 0
+        ? 'هوية $cleanName تنتهي اليوم.'
+        : daysRemaining == 1
+            ? 'هوية $cleanName ستنتهي غدًا.'
+            : 'هوية $cleanName ستنتهي خلال $daysRemaining يومًا.';
+
+    final id = _notificationId(
+      NotificationType.employee,
+      employeeId,
+      1000 + daysRemaining,
+    );
+
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'expiry_reminders',
+        'تنبيهات الاستحقاق',
+        channelDescription:
+            'تنبيهات انتهاء الهويات والزيارات والوثائق والتأمين',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        enableVibration: true,
+      ),
+    );
+
+    await _notifications.show(
+      id: id,
+      title: 'تنبيه انتهاء الهوية',
+      body: body,
+      notificationDetails: details,
+      payload: '${NotificationType.employee.name}:$employeeId',
+    );
+
+    await prefs.setBool(markerKey, true);
+
+    if (kDebugMode) {
+      debugPrint(
+        'IMMEDIATE EMPLOYEE ALERT => $cleanName | days=$daysRemaining | id=$id',
+      );
+    }
+  }
 
   Future<void> scheduleVisit({
 
