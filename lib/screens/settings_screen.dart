@@ -731,18 +731,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: OutlinedButton.icon(
                 onPressed: () async {
                   try {
-                    await NotificationService.instance
-                        .showTestNotification();
-                    if (!mounted) return;
-                    TopMessage.show(
-                      context,
-                      "تم إرسال إشعار الاختبار",
+                    final count = await NotificationService.instance
+                        .showCurrentIdentityExpiryAlerts(
+                      withinDays: notificationDays,
                     );
+
+                    if (!mounted) return;
+
+                    if (count > 0) {
+                      TopMessage.show(
+                        context,
+                        "تم عرض $count من الهويات القريبة من الانتهاء",
+                      );
+                    } else {
+                      TopMessage.show(
+                        context,
+                        "لا توجد هويات تنتهي خلال $notificationDays يومًا",
+                      );
+                    }
                   } catch (e) {
                     if (!mounted) return;
                     TopMessage.show(
                       context,
-                      "تعذر إرسال إشعار الاختبار",
+                      "تعذر فحص تنبيهات الهويات",
                       type: TopMessageType.error,
                     );
                   }

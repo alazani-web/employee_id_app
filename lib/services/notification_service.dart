@@ -859,6 +859,106 @@ class NotificationService {
 
 
 
+
+  /// يعرض فورًا إشعارات الهويات القريبة من الانتهاء.
+  /// هذا مخصص لزر "اختبار الإشعار الآن" حتى يختبر المستخدم
+  /// التنبيهات الفعلية الموجودة في بيانات الموظفين، وليس إشعارًا تجريبيًا عامًا.
+  Future<int> showCurrentIdentityExpiryAlerts({
+    int withinDays = 30,
+  }) async {
+    await initialize();
+
+    final prefs = await SharedPreferences.getInstance();
+
+    if (!(prefs.getBool('notifications_enabled') ?? true)) {
+      return 0;
+    }
+
+    final employees =
+        prefs.getStringList('saved_employees') ?? const <String>[];
+
+    final now = DateTime.now();
+    int shownCount = 0;
+
+    for (final raw in employees) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is! Map) continue;
+
+        final id = decoded['id']?.toString().trim() ?? '';
+        final name = decoded['name']?.toString().trim() ?? 'الموظف';
+        final expiry =
+            _parseDate(decoded['expiryDate']?.toString() ?? '');
+
+        if (expiry == null || id.isEmpty) continue;
+
+        final today = DateTime(now.year, now.month, now.day);
+        final expiryDay =
+            DateTime(expiry.year, expiry.month, expiry.day);
+
+        final daysRemaining = expiryDay.difference(today).inDays;
+
+        // نعرض المنتهية والقريبة من الانتهاء حتى عدد الأيام المحدد.
+        if (daysRemaining > withinDays) continue;
+
+        final int notificationId =
+            _notificationId(NotificationType.employee, id, 900);
+
+        final String title;
+        final String body;
+
+        if (daysRemaining < 0) {
+          title = 'انتهت الهوية';
+          body = 'هوية $name منتهية منذ ${daysRemaining.abs()} يوم.';
+        } else if (daysRemaining == 0) {
+          title = 'انتهت الهوية اليوم';
+          body = 'هوية $name تنتهي اليوم.';
+        } else if (daysRemaining == 1) {
+          title = 'تنبيه انتهاء الهوية';
+          body = 'هوية $name ستنتهي غدًا.';
+        } else {
+          title = 'تنبيه انتهاء الهوية';
+          body = 'هوية $name ستنتهي خلال $daysRemaining يومًا.';
+        }
+
+        await _notifications.show(
+          id: notificationId,
+          title: title,
+          body: body,
+          notificationDetails: const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'expiry_test',
+              'اختبار تنبيهات الاستحقاق',
+              channelDescription:
+                  'عرض فوري للهويات القريبة من الانتهاء للاختبار',
+              importance: Importance.max,
+              priority: Priority.high,
+              icon: '@mipmap/ic_launcher',
+              enableVibration: true,
+            ),
+          ),
+          payload: '${NotificationType.employee.name}:$id',
+        );
+
+        shownCount++;
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('Current identity alert error: $e');
+        }
+      }
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        'CURRENT IDENTITY ALERT TEST => shown=$shownCount '
+        '| totalEmployees=${employees.length} '
+        '| withinDays=$withinDays',
+      );
+    }
+
+    return shownCount;
+  }
+
   Future<void> showTestNotification() async {
 
     await initialize();
