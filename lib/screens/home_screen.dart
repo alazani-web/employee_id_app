@@ -9,6 +9,7 @@ import '../providers/employee_provider.dart';
 import '../providers/visit_provider.dart';
 import '../providers/alert_provider.dart';
 import 'settings_screen.dart';
+import '../services/supabase_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final ValueChanged<String>? onNavigate;
@@ -61,11 +62,39 @@ class _HomeScreenState extends State<HomeScreen> {
       'employee_id_app_documents_v2';
 
   int _documentCount = 0;
+  SubscriptionInfo? _subscriptionInfo;
+  bool _subscriptionLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadDocumentCount();
+    _loadSubscriptionInfo();
+  }
+
+  Future<void> _loadSubscriptionInfo() async {
+    try {
+      final info = await SupabaseService.instance.subscriptionInfo;
+      if (!mounted) return;
+      setState(() {
+        _subscriptionInfo = info;
+        _subscriptionLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _subscriptionInfo = null;
+        _subscriptionLoading = false;
+      });
+    }
+  }
+
+  String get _subscriptionSubtitle {
+    if (_subscriptionLoading) return 'جاري تحميل بيانات الاشتراك...';
+    final info = _subscriptionInfo;
+    if (info == null) return 'مفتاح التفعيل: غير مفعل';
+    if (!info.active) return 'مفتاح التفعيل: منتهي\nالاشتراك يحتاج إلى تجديد';
+    return 'مفتاح التفعيل: مفعل\nالأيام المتبقية: ${info.remainingDays} يوم';
   }
 
   Future<void> _loadDocumentCount() async {
@@ -112,18 +141,12 @@ class _HomeScreenState extends State<HomeScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         backgroundColor: const Color(0xffF7F9FC),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              10,
-              8,
-              10,
-              12 + MediaQuery.of(context).padding.bottom,
-            ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(10),
           child: Column(
             children: [
               Container(
-                constraints: const BoxConstraints(minHeight: 62, maxHeight: 68),
+                height: 68,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
@@ -208,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
-                childAspectRatio: 3.05,
+                childAspectRatio: 3.35,
                 children: [
                   StatCard(
                     title: 'الموظفين',
@@ -261,8 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
               InfoCard(
                 title: 'حالة الترخيص',
                 icon: 'assets/icons/badge_check.svg',
-                subtitle:
-                    'مفتاح التفعيل: مفعل\nالأيام المتبقية: 12512 يوم',
+                subtitle: _subscriptionSubtitle,
                 button: 'إدارة الترخيص',
                 onTap: () {
                   // افتح صفحة التفعيل من خلال نظام التنقل الرئيسي
@@ -286,7 +308,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
             ],
-          ),
           ),
         ),
       ),
@@ -318,7 +339,7 @@ class StatCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        constraints: const BoxConstraints(minHeight: 48),
+        height: 50,
         padding:
             const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
@@ -396,7 +417,7 @@ class InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import 'activation_screen.dart';
 import 'backup_screen.dart';
 import '../widgets/top_message.dart';
 import '../services/notification_service.dart';
+import '../services/supabase_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String selectedPage;
@@ -49,6 +48,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String? _notificationSaveMessage;
 
+  SubscriptionInfo? _subscriptionInfo;
+  bool _subscriptionLoading = true;
+
   // مفتاح لتحديد مكان نافذة اختيار الوقت رأسيًا بالنسبة لخانة الوقت.
   final GlobalKey _notificationTimeKey = GlobalKey();
 
@@ -66,6 +68,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     currentPage = widget.selectedPage;
     _loadSavedSettings();
+    _loadSubscriptionInfo();
+  }
+
+  Future<void> _loadSubscriptionInfo() async {
+    try {
+      final info = await SupabaseService.instance.subscriptionInfo;
+      if (!mounted) return;
+      setState(() {
+        _subscriptionInfo = info;
+        _subscriptionLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _subscriptionInfo = null;
+        _subscriptionLoading = false;
+      });
+    }
+  }
+
+  String get _licenseStatusText {
+    if (_subscriptionLoading) return 'جاري تحميل بيانات الاشتراك...';
+    final info = _subscriptionInfo;
+    if (info == null) return 'مفتاح التفعيل: غير مفعل';
+    if (!info.active) return 'مفتاح التفعيل: منتهي';
+    return 'مفتاح التفعيل: مفعل';
+  }
+
+  String get _licenseRemainingText {
+    if (_subscriptionLoading) return 'جاري تحميل المدة...';
+    final info = _subscriptionInfo;
+    if (info == null) return 'لا توجد مدة اشتراك محفوظة';
+    if (!info.active) return 'انتهى الاشتراك';
+    return 'الأيام المتبقية: ${info.remainingDays} يوم';
   }
 
   Future<void> _loadSavedSettings() async {
@@ -231,7 +267,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return BackupScreen(onBack: widget.onBack);
 
       case "activation":
-        return const ActivationScreen();
+        return _buildActivationView();
 
       case "lock":
         return _buildLockView();
@@ -350,59 +386,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ============================================================
 
   Widget _buildActivationView() {
-    return _buildCard(
+    final info = _subscriptionInfo;
+    final isActive = info?.active ?? false;
+
+    String formatDate(DateTime? date) {
+      if (date == null) return "غير محدد";
+      final d = date.day.toString().padLeft(2, '0');
+      final m = date.month.toString().padLeft(2, '0');
+      return "$d/$m/${date.year}";
+    }
+
+    String planName(String? plan) {
+      if (plan == null || plan.trim().isEmpty) return "غير محددة";
+      switch (plan.toLowerCase()) {
+        case "premium":
+          return "Premium";
+        case "basic":
+          return "Basic";
+        case "pro":
+          return "Pro";
+        default:
+          return plan;
+      }
+    }
+
+    double progress = 0;
+    if (info != null) {
+      final int totalDays = info.expiresAt
+          .difference(info.activatedAt)
+          .inDays
+          .clamp(1, 100000)
+          .toInt();
+      progress = (info.remainingDays / totalDays)
+          .clamp(0.0, 1.0)
+          .toDouble();
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xffF7F9FC),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: const Color(0xffE7ECF4),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildSectionTitle(
-            "التفعيل والاشتراك",
-            LucideIcons.keyRound,
-          ),
-
-          const SizedBox(height: 8),
-
-          const Text(
-            "إدارة حالة التفعيل والاشتراك والأجهزة المرتبطة.",
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 12,
-              color: Color(0xff7A8495),
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
+          // Header
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
             decoration: BoxDecoration(
-              color: const Color(0xffEFFAF1),
-              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: isActive
+                    ? const [
+                        Color(0xff2864D7),
+                        Color(0xff1747A3),
+                      ]
+                    : const [
+                        Color(0xff64748B),
+                        Color(0xff475569),
+                      ],
+              ),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(22),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(
-                  LucideIcons.badgeCheck,
-                  color: Color(0xff3D9850),
-                  size: 25,
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.22),
+                    ),
+                  ),
+                  child: Icon(
+                    isActive
+                        ? LucideIcons.badgeCheck
+                        : LucideIcons.keyRound,
+                    color: Colors.white,
+                    size: 25,
+                  ),
                 ),
-                const SizedBox(width: 10),
-                const Expanded(
+                const SizedBox(width: 13),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        "حالة الترخيص",
+                      const Text(
+                        "إدارة الاشتراك",
+                        textAlign: TextAlign.right,
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        "مفتاح التفعيل: مفعل",
+                        isActive
+                            ? "اشتراكك الحالي فعال"
+                            : "لا يوجد اشتراك فعال",
+                        textAlign: TextAlign.right,
                         style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.78),
                           fontSize: 12,
-                          color: Color(0xff3D9850),
                         ),
                       ),
                     ],
@@ -412,25 +506,387 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Status + remaining days
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(17),
+                          border: Border.all(
+                            color: const Color(0xffE6EBF3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  "الحالة",
+                                  style: TextStyle(
+                                    color: const Color(0xff64748B),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 7),
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? const Color(0xff22A05A)
+                                        : const Color(0xffEF4444),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              isActive ? "فعال" : "منتهي",
+                              style: TextStyle(
+                                color: isActive
+                                    ? const Color(0xff16834A)
+                                    : const Color(0xffDC2626),
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: const Color(0xffEEF4FF),
+                          borderRadius: BorderRadius.circular(17),
+                          border: Border.all(
+                            color: const Color(0xffD9E5FF),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text(
+                              "المدة المتبقية",
+                              style: TextStyle(
+                                color: Color(0xff64748B),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              info == null
+                                  ? "--"
+                                  : "${info.remainingDays}",
+                              style: const TextStyle(
+                                color: Color(0xff2864D7),
+                                fontSize: 25,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const Text(
+                              "يوم",
+                              style: TextStyle(
+                                color: Color(0xff64748B),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
 
-          const Text(
-            "الأيام المتبقية: 12512 يوم",
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              fontSize: 12,
-              color: Color(0xff7A8495),
+                const SizedBox(height: 16),
+
+                // Progress
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(17),
+                    border: Border.all(
+                      color: const Color(0xffE6EBF3),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            info == null
+                                ? "لا توجد بيانات"
+                                : "${info.remainingDays} يوم متبقي",
+                            style: const TextStyle(
+                              color: Color(0xff2864D7),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Spacer(),
+                          const Text(
+                            "مدة الاشتراك",
+                            style: TextStyle(
+                              color: Color(0xff334155),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 11),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 8,
+                          backgroundColor: const Color(0xffE9EEF6),
+                          valueColor:
+                              const AlwaysStoppedAnimation<Color>(
+                            Color(0xff2864D7),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Details
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSubscriptionDetailTile(
+                        icon: LucideIcons.badgeCheck,
+                        title: "الباقة",
+                        value: planName(info?.plan),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildSubscriptionDetailTile(
+                        icon: LucideIcons.calendarDays,
+                        title: "تاريخ التفعيل",
+                        value: formatDate(info?.activatedAt),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildSubscriptionDetailTile(
+                        icon: LucideIcons.calendarCheck,
+                        title: "تاريخ الانتهاء",
+                        value: formatDate(info?.expiresAt),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildSubscriptionDetailTile(
+                        icon: LucideIcons.keyRound,
+                        title: "مفتاح التفعيل",
+                        value: info?.maskedKey ?? "غير متوفر",
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Account / device
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 15,
+                    vertical: 13,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xffF8FAFC),
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(
+                      color: const Color(0xffE6EBF3),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.smartphone,
+                        color: Color(0xff2864D7),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          "الجهاز الحالي مرتبط بهذا الاشتراك",
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            color: Color(0xff475569),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 18),
+
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: isActive
+                        ? null
+                        : () {
+                            _showMessage("لا يوجد اشتراك فعال");
+                          },
+                    icon: const Icon(
+                      LucideIcons.keyRound,
+                      size: 18,
+                    ),
+                    label: const Text(
+                      "تفعيل اشتراك جديد",
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff2864D7),
+                      disabledBackgroundColor: const Color(0xffDCE3EE),
+                      foregroundColor: Colors.white,
+                      disabledForegroundColor: const Color(0xff94A3B8),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+
+                if (isActive) ...[
+                  const SizedBox(height: 10),
+
+                  SizedBox(
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      onPressed: _deactivateCurrentDevice,
+                      icon: const Icon(
+                        LucideIcons.power,
+                        size: 18,
+                      ),
+                      label: const Text(
+                        "إلغاء تفعيل هذا الجهاز",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xffDC2626),
+                        side: const BorderSide(
+                          color: Color(0xffF1B7BC),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(13),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 9),
+
+                const Text(
+                  "بيانات الاشتراك المعروضة هنا مأخوذة من الترخيص المرتبط بهذا الجهاز.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xff94A3B8),
+                    fontSize: 10,
+                  ),
+                ),
+              ],
             ),
           ),
+        ],
+      ),
+    );
+  }
 
-          const SizedBox(height: 18),
-
-          _buildBlueButton(
-            title: "إدارة الاشتراك",
-            icon: LucideIcons.userCog,
-            onPressed: () {
-              _showMessage("إدارة الاشتراك");
-            },
+  Widget _buildSubscriptionDetailTile({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 78),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xffE6EBF3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Flexible(
+                child: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xff64748B),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 7),
+              Icon(
+                icon,
+                size: 17,
+                color: const Color(0xff2864D7),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Color(0xff1E293B),
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ],
       ),
@@ -759,7 +1215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   }
                 },
                 icon: const Icon(
-                  Icons.notifications_active_outlined,
+                  LucideIcons.bell,
                   size: 18,
                 ),
                 label: const Text(
@@ -1046,42 +1502,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildActionButton({
-    required String title,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 43,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        icon: Icon(
-          icon,
-          size: 19,
-          color: Colors.white,
-        ),
-        label: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 13,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildEmptyState({
     required IconData icon,
     required String title,
@@ -1181,12 +1601,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     bool selectedPm = notificationTime?.period == DayPeriod.pm;
 
     final screenSize = MediaQuery.of(context).size;
-    final popupWidth = (screenSize.width - 32).clamp(260.0, 360.0);
+    final double popupWidth =
+        (screenSize.width - 32).clamp(260.0, 360.0).toDouble();
     const popupHeight = 224.0;
-    final double top = ((screenSize.height - popupHeight) / 2)
-        .clamp(12.0, screenSize.height - popupHeight - 12.0);
-    final double left = ((screenSize.width - popupWidth) / 2)
-        .clamp(12.0, screenSize.width - popupWidth - 12.0);
+    final double top =
+        ((screenSize.height - popupHeight) / 2)
+            .clamp(12.0, screenSize.height - popupHeight - 12.0)
+            .toDouble();
+    final double left =
+        ((screenSize.width - popupWidth) / 2)
+            .clamp(12.0, screenSize.width - popupWidth - 12.0)
+            .toDouble();
 
     try {
       // مهم: لا نعدّل State الصفحة من داخل الـ Dialog.
@@ -1205,7 +1630,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Positioned(
                   top: top,
                   left: left,
-                  width: popupWidth.toDouble(),
+                  width: popupWidth,
                   child: Material(
                     color: Colors.transparent,
                     child: StatefulBuilder(
@@ -1737,6 +2162,106 @@ class _SettingsScreenState extends State<SettingsScreen> {
     widget.onLockStateChanged?.call(true);
 
     _showMessage("تم حفظ إعدادات القفل بنجاح");
+  }
+
+  Future<void> _deactivateCurrentDevice() async {
+    final info = _subscriptionInfo;
+    if (info == null || !info.active) {
+      _showMessage(
+        "لا يوجد اشتراك فعال على هذا الجهاز",
+        type: TopMessageType.error,
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xffFEF2F2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    LucideIcons.shieldAlert,
+                    color: Color(0xffDC2626),
+                    size: 21,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    "إلغاء تفعيل الجهاز",
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              "هل أنت متأكد من إلغاء تفعيل الاشتراك على هذا الجهاز؟\n\n"
+              "سيتم تسجيل خروج الترخيص من هذا الجهاز، ولن يتم حذف الموظفين أو الزيارات أو المستندات.",
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.7,
+                color: Color(0xff475569),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text("إلغاء"),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xffDC2626),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text("نعم، إلغاء التفعيل"),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      // تنظيف بيانات الاشتراك المحلية فقط هنا.
+      // تحرير المفتاح من Supabase سيتم عبر RPC الآمن المخصص لذلك.
+      await SupabaseService.instance.clearSubscription();
+
+      if (!mounted) return;
+
+      setState(() {
+        _subscriptionInfo = null;
+      });
+
+      _showMessage("تم إلغاء تفعيل الاشتراك على هذا الجهاز");
+    } catch (e) {
+      if (!mounted) return;
+
+      _showMessage(
+        "تعذر إلغاء التفعيل",
+        type: TopMessageType.error,
+      );
+    }
   }
 
   void _showMessage(

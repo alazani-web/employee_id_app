@@ -9,6 +9,7 @@ import 'providers/employee_provider.dart';
 import 'providers/visit_provider.dart';
 import 'providers/alert_provider.dart';
 import 'services/notification_service.dart';
+import 'services/supabase_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,58 +24,12 @@ Future<void> main() async {
   );
 
   // ============================================================
-  // Supabase connection/auth diagnostic
+  // Supabase Service
   // ============================================================
-  try {
-    final supabase = Supabase.instance.client;
 
-    debugPrint('==============================================');
-    debugPrint('SUPABASE TEST START');
-    debugPrint('SUPABASE URL: ${supabase.rest.url}');
-
-    final existingUser = supabase.auth.currentUser;
-
-    if (existingUser != null) {
-      debugPrint('SUPABASE USER ALREADY EXISTS: ${existingUser.id}');
-    } else {
-      debugPrint('SUPABASE USER: none -> creating anonymous user...');
-
-      final response = await supabase.auth.signInAnonymously();
-
-      if (response.user == null) {
-        debugPrint('SUPABASE AUTH ERROR: signInAnonymously returned null user');
-      } else {
-        debugPrint('SUPABASE ANONYMOUS USER CREATED: ${response.user!.id}');
-      }
-    }
-
-    final currentUser = supabase.auth.currentUser;
-    debugPrint('SUPABASE CURRENT USER: ${currentUser?.id ?? 'NULL'}');
-    debugPrint(
-      'SUPABASE SESSION: ${supabase.auth.currentSession != null ? 'ACTIVE' : 'NULL'}',
-    );
-
-    // اختبار القراءة فقط من جدول employees.
-    // لا نضيف ولا نعدل أي بيانات في هذا الاختبار.
-    if (currentUser != null) {
-      final rows = await supabase
-          .from('employees')
-          .select('id')
-          .limit(1);
-
-      debugPrint(
-        'SUPABASE EMPLOYEES READ: SUCCESS (${rows.length} row(s) returned)',
-      );
-    }
-
-    debugPrint('SUPABASE TEST END');
-    debugPrint('==============================================');
-  } catch (e, stackTrace) {
-    debugPrint('==============================================');
-    debugPrint('SUPABASE TEST ERROR: $e');
-    debugPrint(stackTrace.toString());
-    debugPrint('==============================================');
-  }
+  // استرجاع هوية الاشتراك المحفوظة على الجهاز.
+  // لا ننشئ Anonymous User جديدًا عند كل تشغيل.
+  await SupabaseService.instance.initialize();
 
   // ============================================================
   // Notifications
