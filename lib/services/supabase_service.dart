@@ -97,6 +97,35 @@ class SupabaseService {
     await prefs.remove('active_activation_plan');
   }
 
+  /// Releases the currently active subscription key on Supabase.
+  ///
+  /// This must be called before clearSubscription(), because clearSubscription()
+  /// only removes the local subscription cache. The RPC changes the server-side
+  /// activation_keys row back to an available state.
+  Future<void> deactivateSubscription() async {
+    try {
+      final response = await client.rpc('deactivate_subscription');
+
+      final data = Map<String, dynamic>.from(response as Map);
+      final success = data['success'] == true;
+      final message = (data['message'] ??
+              (success
+                  ? 'تم إلغاء تفعيل الاشتراك بنجاح'
+                  : 'تعذر إلغاء تفعيل الاشتراك'))
+          .toString();
+
+      if (!success) {
+        throw Exception(message);
+      }
+    } on PostgrestException catch (e) {
+      throw Exception(
+        e.message.isNotEmpty
+            ? e.message
+            : 'تعذر الاتصال بخدمة الاشتراك.',
+      );
+    }
+  }
+
   Future<SubscriptionInfo?> get subscriptionInfo async {
     final prefs = await SharedPreferences.getInstance();
     final id = prefs.getString(_activationKeyIdStorage);

@@ -15,11 +15,16 @@ class SettingsScreen extends StatefulWidget {
   // حتى تتحدث App مباشرةً بدون إعادة تشغيل.
   final ValueChanged<bool>? onLockStateChanged;
 
+  // يتم استدعاؤه بعد إلغاء تفعيل الاشتراك حتى تعيد App
+  // عرض شاشة التفعيل الإجباري مباشرةً.
+  final VoidCallback? onSubscriptionDeactivated;
+
   const SettingsScreen({
     super.key,
     this.selectedPage = "settings",
     this.onBack,
     this.onLockStateChanged,
+    this.onSubscriptionDeactivated,
   });
 
   @override
@@ -2254,6 +2259,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
 
       _showMessage("تم إلغاء تفعيل الاشتراك على هذا الجهاز");
+
+      // بعد نجاح الإلغاء نعيد المستخدم مباشرةً إلى شاشة التفعيل
+      // الإجباري الرئيسية. App هي المسؤولة عن تبديل الشاشة.
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (!mounted) return;
+      widget.onSubscriptionDeactivated?.call();
     } catch (e) {
       if (!mounted) return;
 

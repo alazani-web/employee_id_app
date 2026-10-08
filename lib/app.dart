@@ -300,6 +300,19 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
 
 
+  void _handleSubscriptionDeactivated() {
+    if (!mounted) return;
+
+    // بعد إلغاء تفعيل الترخيص، نعيد التطبيق مباشرةً
+    // إلى شاشة إدخال مفتاح الاشتراك الإجباري.
+    setState(() {
+      _subscriptionRequired = true;
+      _subscriptionLoading = false;
+      currentPage = 'home';
+    });
+  }
+
+
   void navigate(String page) {
 
     if (!mounted) return;
@@ -481,6 +494,8 @@ class _AppState extends State<App> with WidgetsBindingObserver {
         onBack: () => navigate('home'),
 
         onLockStateChanged: _handleLockStateChanged,
+
+      onSubscriptionDeactivated: _handleSubscriptionDeactivated,
 
       );
 
@@ -1284,7 +1299,9 @@ class _AppLockScreenState extends State<AppLockScreen> {
 
 
 // ============================================================
-// شاشة تفعيل الاشتراك
+
+// ============================================================
+// شاشة تفعيل الاشتراك — Premium / Enterprise
 // ============================================================
 
 class SubscriptionActivationScreen extends StatefulWidget {
@@ -1300,12 +1317,7 @@ class SubscriptionActivationScreen extends StatefulWidget {
       _SubscriptionActivationScreenState();
 }
 
-enum _ActivationState {
-  idle,
-  checking,
-  success,
-  error,
-}
+enum _ActivationState { idle, checking, success, error }
 
 class _SubscriptionActivationScreenState
     extends State<SubscriptionActivationScreen>
@@ -1313,40 +1325,56 @@ class _SubscriptionActivationScreenState
   final TextEditingController _keyController = TextEditingController();
   final FocusNode _keyFocus = FocusNode();
 
-  late final AnimationController _pulseController;
+  late final AnimationController _ambientController;
   late final AnimationController _spinController;
   late final AnimationController _successController;
+  late final AnimationController _entryController;
 
   _ActivationState _state = _ActivationState.idle;
   String _message = '';
+
+  static const Color navy = Color(0xff0D2452);
+  static const Color blue = Color(0xff2563EB);
+  static const Color blueLight = Color(0xffEAF2FF);
+  static const Color background = Color(0xffF5F8FD);
+  static const Color text = Color(0xff101828);
+  static const Color muted = Color(0xff667085);
+  static const Color success = Color(0xff16A34A);
+  static const Color danger = Color(0xffD9485F);
 
   @override
   void initState() {
     super.initState();
 
-    _pulseController = AnimationController(
+    _ambientController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 3600),
     )..repeat(reverse: true);
 
     _spinController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 900),
     );
 
     _successController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 650),
     );
+
+    _entryController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..forward();
   }
 
   @override
   void dispose() {
     _keyController.dispose();
     _keyFocus.dispose();
-    _pulseController.dispose();
+    _ambientController.dispose();
     _spinController.dispose();
     _successController.dispose();
+    _entryController.dispose();
     super.dispose();
   }
 
@@ -1355,6 +1383,7 @@ class _SubscriptionActivationScreenState
 
     if (key.isEmpty) {
       _showError('أدخل مفتاح الاشتراك أولاً');
+      _keyFocus.requestFocus();
       return;
     }
 
@@ -1362,7 +1391,7 @@ class _SubscriptionActivationScreenState
 
     setState(() {
       _state = _ActivationState.checking;
-      _message = 'جاري التحقق من صلاحية المفتاح...';
+      _message = 'يتم التحقق من صلاحية المفتاح بأمان...';
     });
 
     _spinController
@@ -1373,7 +1402,6 @@ class _SubscriptionActivationScreenState
       final service = SupabaseService.instance;
 
       await service.ensureSignedIn();
-
       final result = await service.activateSubscription(key);
 
       if (!mounted) return;
@@ -1393,7 +1421,7 @@ class _SubscriptionActivationScreenState
           ..forward();
 
         await Future<void>.delayed(
-          const Duration(milliseconds: 1250),
+          const Duration(milliseconds: 1300),
         );
 
         if (!mounted) return;
@@ -1409,8 +1437,10 @@ class _SubscriptionActivationScreenState
         ..stop()
         ..reset();
 
-      _showError('تعذر الاتصال بخدمة الاشتراك. حاول مرة أخرى.');
       debugPrint('SUBSCRIPTION ACTIVATION ERROR => $e');
+      _showError(
+        'تعذر الاتصال بخدمة الاشتراك. تحقق من الإنترنت وحاول مرة أخرى.',
+      );
     }
   }
 
@@ -1426,28 +1456,25 @@ class _SubscriptionActivationScreenState
       _message = message;
     });
 
-    Future<void>.delayed(
-      const Duration(milliseconds: 1000),
-      () {
-        if (!mounted) return;
-        if (_state == _ActivationState.error) {
-          setState(() {
-            _state = _ActivationState.idle;
-            _message = '';
-          });
-        }
-      },
-    );
+    Future<void>.delayed(const Duration(milliseconds: 2200), () {
+      if (!mounted || _state != _ActivationState.error) return;
+
+      setState(() {
+        _state = _ActivationState.idle;
+        _message = '';
+      });
+    });
   }
 
   Color get _accent {
     switch (_state) {
       case _ActivationState.success:
-        return const Color(0xff16A34A);
+        return success;
       case _ActivationState.error:
-        return const Color(0xffE05260);
-      default:
-        return const Color(0xff2563EB);
+        return danger;
+      case _ActivationState.checking:
+      case _ActivationState.idle:
+        return blue;
     }
   }
 
@@ -1456,37 +1483,35 @@ class _SubscriptionActivationScreenState
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xffF3F6FB),
+        backgroundColor: background,
         body: Stack(
           children: [
-            Positioned(
-              top: -100,
-              left: -90,
-              child: _ambientOrb(
-                size: 260,
-                color: const Color(0xffDCE8FF),
-              ),
-            ),
-            Positioned(
-              bottom: -130,
-              right: -100,
-              child: _ambientOrb(
-                size: 300,
-                color: const Color(0xffE5ECFA),
-              ),
-            ),
+            _buildAmbientBackground(),
             SafeArea(
               child: Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 26,
-                  ),
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 26),
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 455,
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: FadeTransition(
+                      opacity: CurvedAnimation(
+                        parent: _entryController,
+                        curve: Curves.easeOut,
+                      ),
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, .035),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: _entryController,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
+                        child: _buildPremiumCard(),
+                      ),
                     ),
-                    child: _buildPremiumCard(),
                   ),
                 ),
               ),
@@ -1497,10 +1522,37 @@ class _SubscriptionActivationScreenState
     );
   }
 
-  Widget _ambientOrb({
-    required double size,
-    required Color color,
-  }) {
+  Widget _buildAmbientBackground() {
+    return AnimatedBuilder(
+      animation: _ambientController,
+      builder: (context, child) {
+        final t = _ambientController.value;
+
+        return Stack(
+          children: [
+            Positioned(
+              top: -150 + (t * 18),
+              right: -120,
+              child: _glow(
+                360,
+                const Color(0xffD9E7FF),
+              ),
+            ),
+            Positioned(
+              bottom: -190 + (t * 12),
+              left: -140,
+              child: _glow(
+                390,
+                const Color(0xffE7EEFF),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _glow(double size, Color color) {
     return IgnorePointer(
       child: Container(
         width: size,
@@ -1509,11 +1561,11 @@ class _SubscriptionActivationScreenState
           shape: BoxShape.circle,
           gradient: RadialGradient(
             colors: [
-              color.withOpacity(.72),
-              color.withOpacity(.08),
+              color.withValues(alpha: .72),
+              color.withValues(alpha: .12),
               Colors.transparent,
             ],
-            stops: const [0, .62, 1],
+            stops: const [0, .55, 1],
           ),
         ),
       ),
@@ -1521,129 +1573,113 @@ class _SubscriptionActivationScreenState
   }
 
   Widget _buildPremiumCard() {
-    final bool isSuccess = _state == _ActivationState.success;
-    final bool isError = _state == _ActivationState.error;
-    final bool isChecking = _state == _ActivationState.checking;
+    final checking = _state == _ActivationState.checking;
+    final successState = _state == _ActivationState.success;
+    final errorState = _state == _ActivationState.error;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeOutCubic,
+      duration: const Duration(milliseconds: 300),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
-          color: isSuccess
-              ? const Color(0xffCDEEDB)
-              : isError
-                  ? const Color(0xffF3D5D8)
-                  : const Color(0xffE6EBF3),
+          color: errorState
+              ? const Color(0xffF3CDD3)
+              : successState
+                  ? const Color(0xffCBE9D6)
+                  : const Color(0xffE3EAF4),
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x140B1F45),
+            color: Color(0x180B1F45),
             blurRadius: 45,
-            offset: Offset(0, 20),
-          ),
-          BoxShadow(
-            color: Color(0x080B1F45),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            offset: Offset(0, 22),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Column(
-          children: [
-            _buildPremiumHeader(),
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(28, 26, 28, 26),
-              child: Column(
-                children: [
-                  _buildPremiumStatusIcon(),
-
-                  const SizedBox(height: 24),
-
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: Text(
-                      isSuccess
-                          ? 'تم تفعيل الاشتراك'
-                          : isError
-                              ? 'تعذر تفعيل الاشتراك'
-                              : isChecking
-                                  ? 'جاري التحقق'
-                                  : 'فعّل اشتراكك',
-                      key: ValueKey<String>(
-                        '${_state}_title',
-                      ),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 27,
-                        height: 1.15,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xff101828),
-                        letterSpacing: -.4,
-                      ),
+      child: Column(
+        children: [
+          _buildTopBar(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 30, 28, 27),
+            child: Column(
+              children: [
+                _buildPremiumBadge(),
+                const SizedBox(height: 25),
+                _buildHero(),
+                const SizedBox(height: 21),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  child: Text(
+                    successState
+                        ? 'تم تفعيل اشتراكك'
+                        : errorState
+                            ? 'لم يتم تفعيل المفتاح'
+                            : checking
+                                ? 'جاري التحقق من المفتاح'
+                                : 'فعّل اشتراكك',
+                    key: ValueKey(_state),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 29,
+                      height: 1.15,
+                      fontWeight: FontWeight.w900,
+                      color: text,
+                      letterSpacing: -.6,
                     ),
                   ),
-
-                  const SizedBox(height: 10),
-
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    child: Text(
-                      _state == _ActivationState.idle
-                          ? 'أدخل مفتاح الاشتراك للوصول إلى جميع مزايا النظام.'
-                          : _message,
-                      key: ValueKey<String>(_message),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.65,
-                        color: isError
-                            ? const Color(0xffC2414A)
-                            : isSuccess
-                                ? const Color(0xff16834A)
-                                : const Color(0xff667085),
-                        fontWeight: FontWeight.w600,
-                      ),
+                ),
+                const SizedBox(height: 9),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  child: Text(
+                    _state == _ActivationState.idle
+                        ? 'افتح كامل مزايا النظام باستخدام مفتاح الاشتراك الخاص بك.'
+                        : _message,
+                    key: ValueKey(_message),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.65,
+                      color: errorState
+                          ? const Color(0xffC2414A)
+                          : successState
+                              ? const Color(0xff16834A)
+                              : muted,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-
-                  const SizedBox(height: 26),
-
-                  _buildKeyInput(isChecking || isSuccess),
-
-                  const SizedBox(height: 14),
-
-                  _buildActivationButton(),
-
-                  const SizedBox(height: 20),
-
-                  _buildSecurityNote(),
-                ],
-              ),
+                ),
+                const SizedBox(height: 25),
+                _buildKeyInput(
+                  disabled: checking || successState,
+                ),
+                const SizedBox(height: 13),
+                _buildActivateButton(),
+                const SizedBox(height: 21),
+                _buildBenefits(),
+                const SizedBox(height: 18),
+                _buildSecurityNote(),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPremiumHeader() {
+  Widget _buildTopBar() {
     return Container(
-      height: 92,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.centerRight,
           end: Alignment.centerLeft,
           colors: [
-            Color(0xff1747A3),
-            Color(0xff2864D7),
-            Color(0xff3B7AF0),
+            Color(0xff1749A5),
+            Color(0xff2563EB),
+            Color(0xff3D7CF1),
           ],
         ),
       ),
@@ -1653,10 +1689,10 @@ class _SubscriptionActivationScreenState
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(.14),
+              color: Colors.white.withValues(alpha: .13),
               borderRadius: BorderRadius.circular(15),
               border: Border.all(
-                color: Colors.white.withOpacity(.20),
+                color: Colors.white.withValues(alpha: .22),
               ),
             ),
             child: const Icon(
@@ -1665,32 +1701,46 @@ class _SubscriptionActivationScreenState
               size: 25,
             ),
           ),
-          const SizedBox(width: 13),
+          const SizedBox(width: 12),
           const Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'ترخيص نظام إدارة الهويات',
-                  textAlign: TextAlign.right,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 15,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'تفعيل آمن • وصول كامل • اشتراك مرتبط بجهازك',
-                  textAlign: TextAlign.right,
+                  'PREMIUM LICENSE  •  وصول كامل',
                   style: TextStyle(
-                    color: Color(0xCFFFFFFF),
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w500,
+                    color: Color(0xDFFFFFFF),
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: .5,
                   ),
                 ),
               ],
+            ),
+          ),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .11),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: .18),
+              ),
+            ),
+            child: const Icon(
+              LucideIcons.shieldCheck,
+              color: Colors.white,
+              size: 19,
             ),
           ),
         ],
@@ -1698,102 +1748,133 @@ class _SubscriptionActivationScreenState
     );
   }
 
-  Widget _buildPremiumStatusIcon() {
-    final bool isChecking = _state == _ActivationState.checking;
-    final bool isSuccess = _state == _ActivationState.success;
-    final bool isError = _state == _ActivationState.error;
+  Widget _buildPremiumBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 13,
+        vertical: 7,
+      ),
+      decoration: BoxDecoration(
+        color: const Color(0xffF0F5FF),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: const Color(0xffD8E5FF),
+        ),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            LucideIcons.sparkles,
+            color: blue,
+            size: 14,
+          ),
+          SizedBox(width: 7),
+          Text(
+            'PREMIUM ACCESS',
+            style: TextStyle(
+              color: Color(0xff285BB8),
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    final Color color = _accent;
+  Widget _buildHero() {
+    final checking = _state == _ActivationState.checking;
+    final successState = _state == _ActivationState.success;
+    final errorState = _state == _ActivationState.error;
 
     return AnimatedBuilder(
       animation: Listenable.merge([
-        _pulseController,
         _spinController,
         _successController,
       ]),
       builder: (context, child) {
-        final pulse = .94 + (_pulseController.value * .06);
-        final double ringScale = isChecking
-            ? 1.0 + (_spinController.value * .035)
-            : isSuccess
-                ? 1.0 + (_successController.value * .08)
-                : 1.0;
+        final successScale =
+            successState ? 1 + (_successController.value * .08) : 1.0;
 
         return SizedBox(
-          width: 138,
-          height: 138,
+          width: 154,
+          height: 154,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              if (!isSuccess && !isError)
-                Transform.scale(
-                  scale: pulse,
-                  child: Container(
-                    width: 124,
-                    height: 124,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: color.withOpacity(.10),
-                        width: 1.5,
-                      ),
-                    ),
+              Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _accent.withValues(alpha: .09),
+                    width: 1,
                   ),
                 ),
-
-              if (isChecking)
+              ),
+              Container(
+                width: 126,
+                height: 126,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _accent.withValues(alpha: .035),
+                  border: Border.all(
+                    color: _accent.withValues(alpha: .16),
+                    width: 1.2,
+                  ),
+                ),
+              ),
+              if (checking)
                 SizedBox(
-                  width: 128,
-                  height: 128,
+                  width: 130,
+                  height: 130,
                   child: CircularProgressIndicator(
-                    value: null,
-                    strokeWidth: 2.2,
-                    color: color.withOpacity(.35),
+                    strokeWidth: 2.5,
+                    color: _accent.withValues(alpha: .35),
                   ),
                 ),
-
-              if (isChecking)
+              if (checking)
                 Transform.rotate(
                   angle: _spinController.value * 6.28318,
                   child: SizedBox(
-                    width: 128,
-                    height: 128,
+                    width: 130,
+                    height: 130,
                     child: CustomPaint(
-                      painter: _PremiumArcPainter(
-                        color: color,
-                        strokeWidth: 4,
+                      painter: _ActivationArcPainter(
+                        color: _accent,
                       ),
                     ),
                   ),
                 ),
-
               Transform.scale(
-                scale: ringScale,
+                scale: successScale,
                 child: Container(
-                  width: 92,
-                  height: 92,
+                  width: 94,
+                  height: 94,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        color.withOpacity(.16),
-                        color.withOpacity(.055),
+                        _accent.withValues(alpha: .16),
+                        _accent.withValues(alpha: .045),
                       ],
                     ),
                     border: Border.all(
-                      color: color.withOpacity(.24),
-                      width: 1.5,
+                      color: _accent.withValues(alpha: .25),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(.13),
-                        blurRadius: 25,
-                        spreadRadius: 2,
+                        color: _accent.withValues(alpha: .13),
+                        blurRadius: 28,
+                        spreadRadius: 3,
                       ),
                     ],
                   ),
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 260),
+                    duration: const Duration(milliseconds: 250),
                     transitionBuilder: (child, animation) {
                       return ScaleTransition(
                         scale: CurvedAnimation(
@@ -1807,15 +1888,14 @@ class _SubscriptionActivationScreenState
                       );
                     },
                     child: Icon(
-                      isSuccess
+                      successState
                           ? LucideIcons.circleCheck
-                          : isError
+                          : errorState
                               ? LucideIcons.circleX
                               : LucideIcons.keyRound,
                       key: ValueKey(_state),
-                      color: color,
-                      size: 39,
-                      
+                      color: _accent,
+                      size: 42,
                     ),
                   ),
                 ),
@@ -1827,164 +1907,160 @@ class _SubscriptionActivationScreenState
     );
   }
 
-  Widget _buildKeyInput(bool disabled) {
+  Widget _buildKeyInput({required bool disabled}) {
+    final errorState = _state == _ActivationState.error;
+    final successState = _state == _ActivationState.success;
+
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
+      duration: const Duration(milliseconds: 220),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 7,
+      ),
       decoration: BoxDecoration(
         color: const Color(0xffF8FAFD),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: _state == _ActivationState.error
-              ? const Color(0xffE8A3AA)
-              : _state == _ActivationState.success
+          color: errorState
+              ? const Color(0xffE6A5AD)
+              : successState
                   ? const Color(0xffBCE4CB)
-                  : const Color(0xffDDE5F0),
+                  : const Color(0xffD8E2EF),
           width: 1.2,
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x060F172A),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
       ),
-      child: TextField(
-        controller: _keyController,
-        focusNode: _keyFocus,
-        enabled: !disabled,
-        textAlign: TextAlign.center,
-        textDirection: TextDirection.ltr,
-        textCapitalization: TextCapitalization.characters,
-        keyboardType: TextInputType.text,
-        onSubmitted: (_) => _activate(),
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.8,
-          color: Color(0xff172B4D),
-        ),
-        decoration: InputDecoration(
-          hintText: 'XXXX-XXXX-XXXX-XXXX',
-          hintStyle: const TextStyle(
-            color: Color(0xffA8B4C7),
-            fontSize: 14,
-            letterSpacing: 1.5,
-            fontWeight: FontWeight.w600,
-          ),
-          prefixIcon: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: const Color(0xffEAF1FF),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                LucideIcons.keyRound,
-                color: Color(0xff2864D7),
-                size: 18,
-              ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xffEAF1FF),
+              borderRadius: BorderRadius.circular(13),
             ),
-          ),
-          suffixIcon: const Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(
-              LucideIcons.lockKeyhole,
-              color: Color(0xff98A6BA),
+            child: const Icon(
+              LucideIcons.keyRound,
+              color: blue,
               size: 19,
             ),
           ),
-          filled: true,
-          fillColor: Colors.transparent,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 19,
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _keyController,
+              focusNode: _keyFocus,
+              enabled: !disabled,
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.ltr,
+              textCapitalization: TextCapitalization.characters,
+              onSubmitted: (_) => _activate(),
+              style: const TextStyle(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.5,
+                color: Color(0xff172B4D),
+              ),
+              decoration: const InputDecoration(
+                hintText: 'XXXX-XXXX-XXXX-XXXX',
+                hintStyle: TextStyle(
+                  color: Color(0xffAAB6C8),
+                  fontSize: 13.5,
+                  letterSpacing: 1.3,
+                ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 14,
+                ),
+              ),
+            ),
           ),
-          border: InputBorder.none,
-        ),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: const Color(0xffE2E8F0),
+              ),
+            ),
+            child: const Icon(
+              LucideIcons.lockKeyhole,
+              color: Color(0xff91A0B5),
+              size: 18,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildActivationButton() {
-    final bool checking = _state == _ActivationState.checking;
-    final bool success = _state == _ActivationState.success;
+  Widget _buildActivateButton() {
+    final checking = _state == _ActivationState.checking;
+    final successState = _state == _ActivationState.success;
 
     return SizedBox(
       width: double.infinity,
-      height: 55,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
+      height: 57,
+      child: DecoratedBox(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(17),
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
-            if (!checking && !success)
-              BoxShadow(
-                color: const Color(0xff2563EB).withOpacity(.22),
-                blurRadius: 16,
-                offset: const Offset(0, 7),
+            if (!checking && !successState)
+              const BoxShadow(
+                color: Color(0x332563EB),
+                blurRadius: 18,
+                offset: Offset(0, 8),
               ),
           ],
         ),
         child: ElevatedButton(
-          onPressed: checking || success ? null : _activate,
+          onPressed: checking || successState ? null : _activate,
           style: ElevatedButton.styleFrom(
             backgroundColor: _accent,
-            disabledBackgroundColor: _accent.withOpacity(.60),
+            disabledBackgroundColor: _accent.withValues(alpha: .62),
             foregroundColor: Colors.white,
             disabledForegroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(17),
+              borderRadius: BorderRadius.circular(18),
             ),
           ),
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
-            transitionBuilder: (child, animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(
-                  scale: animation,
-                  child: child,
-                ),
-              );
-            },
+            duration: const Duration(milliseconds: 250),
             child: checking
                 ? const Row(
                     key: ValueKey('checking'),
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       SizedBox(
-                        width: 21,
-                        height: 21,
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
+                          strokeWidth: 2.3,
                           valueColor:
-                              AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       ),
-                      SizedBox(width: 11),
+                      SizedBox(width: 10),
                       Text(
-                        'جاري التحقق...',
+                        'جاري التحقق من المفتاح',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                     ],
                   )
-                : success
+                : successState
                     ? const Row(
                         key: ValueKey('success'),
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             LucideIcons.circleCheck,
-                            size: 22,
+                            size: 21,
                           ),
                           SizedBox(width: 9),
                           Text(
@@ -2000,17 +2076,17 @@ class _SubscriptionActivationScreenState
                         key: ValueKey('idle'),
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            LucideIcons.arrowLeft,
-                            size: 20,
-                          ),
-                          SizedBox(width: 9),
                           Text(
-                            'تفعيل الاشتراك',
+                            'تحقق وتفعيل الاشتراك',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
                             ),
+                          ),
+                          SizedBox(width: 9),
+                          Icon(
+                            LucideIcons.arrowLeft,
+                            size: 20,
                           ),
                         ],
                       ),
@@ -2020,44 +2096,123 @@ class _SubscriptionActivationScreenState
     );
   }
 
+  Widget _buildBenefits() {
+    return Row(
+      children: [
+        Expanded(
+          child: _benefit(
+            LucideIcons.shieldCheck,
+            'حماية',
+            'تحقق آمن',
+          ),
+        ),
+        _benefitDivider(),
+        Expanded(
+          child: _benefit(
+            LucideIcons.cloud,
+            'سحابي',
+            'بيانات محفوظة',
+          ),
+        ),
+        _benefitDivider(),
+        Expanded(
+          child: _benefit(
+            LucideIcons.zap,
+            'فوري',
+            'تفعيل مباشر',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _benefit(IconData icon, String title, String subtitle) {
+    return Column(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: const Color(0xffF0F5FF),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(
+            icon,
+            color: blue,
+            size: 18,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            color: text,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 8.5,
+            color: muted,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _benefitDivider() {
+    return Container(
+      width: 1,
+      height: 50,
+      color: const Color(0xffE8EDF4),
+    );
+  }
+
   Widget _buildSecurityNote() {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.symmetric(
-        horizontal: 13,
-        vertical: 11,
+        horizontal: 14,
+        vertical: 13,
       ),
       decoration: BoxDecoration(
         color: const Color(0xffF8FAFD),
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xffE8EDF4),
+          color: const Color(0xffE4EAF2),
         ),
       ),
       child: Row(
         children: [
           Container(
-            width: 30,
-            height: 30,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xffEAF1FF),
-              borderRadius: BorderRadius.circular(9),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(
+                color: const Color(0xffE5EBF3),
+              ),
             ),
             child: const Icon(
-              LucideIcons.shieldCheck,
-              color: Color(0xff2864D7),
+              LucideIcons.lockKeyhole,
+              color: Color(0xff5D769C),
               size: 17,
             ),
           ),
-          const SizedBox(width: 9),
+          const SizedBox(width: 10),
           const Expanded(
             child: Text(
-              'يتم التحقق من المفتاح عبر خادم الاشتراكات بشكل آمن، ولا يتم حفظ المفتاح الكامل داخل الواجهة.',
+              'يتم التحقق من المفتاح عبر خادم الاشتراكات بشكل آمن، ولا يتم حفظ المفتاح الكامل داخل التطبيق.',
               textAlign: TextAlign.right,
               style: TextStyle(
-                fontSize: 10.5,
+                fontSize: 9.5,
                 height: 1.55,
-                color: Color(0xff667085),
-                fontWeight: FontWeight.w500,
+                color: muted,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -2067,143 +2222,40 @@ class _SubscriptionActivationScreenState
   }
 }
 
-class _PremiumArcPainter extends CustomPainter {
+class _ActivationArcPainter extends CustomPainter {
   final Color color;
-  final double strokeWidth;
 
-  const _PremiumArcPainter({
+  const _ActivationArcPainter({
     required this.color,
-    required this.strokeWidth,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final radius = size.width / 2 - strokeWidth / 2;
-
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = strokeWidth;
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+
+    final center = size.center(Offset.zero);
+    final radius = size.width / 2 - 2;
 
     canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -1.25,
-      1.65,
+      Rect.fromCircle(
+        center: center,
+        radius: radius,
+      ),
+      -1.2,
+      1.55,
       false,
       paint,
     );
   }
 
   @override
-  bool shouldRepaint(covariant _PremiumArcPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.strokeWidth != strokeWidth;
+  bool shouldRepaint(
+    covariant _ActivationArcPainter oldDelegate,
+  ) {
+    return oldDelegate.color != color;
   }
 }
-
-class _PremiumStatusPainter extends CustomPainter {
-  final _ActivationState state;
-  final Color color;
-  final double progress;
-
-  const _PremiumStatusPainter({
-    required this.state,
-    required this.color,
-    required this.progress,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.2
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    if (state == _ActivationState.success) {
-      final path = Path()
-        ..moveTo(size.width * .27, size.height * .52)
-        ..lineTo(size.width * .45, size.height * .69)
-        ..lineTo(size.width * .75, size.height * .34);
-
-      final metric = path.computeMetrics().first;
-      final partial = metric.extractPath(
-        0,
-        metric.length * Curves.easeOutCubic.transform(
-          progress.clamp(0.0, 1.0),
-        ),
-      );
-
-      canvas.drawPath(partial, paint);
-      return;
-    }
-
-    if (state == _ActivationState.error) {
-      final p1 = Path()
-        ..moveTo(size.width * .32, size.height * .32)
-        ..lineTo(size.width * .68, size.height * .68);
-
-      final p2 = Path()
-        ..moveTo(size.width * .68, size.height * .32)
-        ..lineTo(size.width * .32, size.height * .68);
-
-      canvas.drawPath(p1, paint);
-      canvas.drawPath(p2, paint);
-      return;
-    }
-
-    // مفتاح احترافي مرسوم بدل أيقونة جاهزة.
-    final keyPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.2
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawCircle(
-      Offset(size.width * .35, size.height * .48),
-      size.width * .13,
-      keyPaint,
-    );
-
-    canvas.drawLine(
-      Offset(size.width * .46, size.height * .48),
-      Offset(size.width * .73, size.height * .48),
-      keyPaint,
-    );
-
-    canvas.drawLine(
-      Offset(size.width * .62, size.height * .48),
-      Offset(size.width * .62, size.height * .61),
-      keyPaint,
-    );
-
-    canvas.drawLine(
-      Offset(size.width * .72, size.height * .48),
-      Offset(size.width * .72, size.height * .57),
-      keyPaint,
-    );
-
-    final dotPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(
-      center,
-      size.width * .035,
-      dotPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _PremiumStatusPainter oldDelegate) {
-    return oldDelegate.state != state ||
-        oldDelegate.color != color ||
-        oldDelegate.progress != progress;
-  }
-}
-
