@@ -131,7 +131,7 @@ class MainApp extends StatelessWidget {
       // الصفحة الرئيسية
       // ============================================================
 
-      home: const App(),
+      home:  App(),
     );
   }
 }

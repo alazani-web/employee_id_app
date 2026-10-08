@@ -6,6 +6,7 @@ import 'backup_screen.dart';
 import '../widgets/top_message.dart';
 import '../services/notification_service.dart';
 import '../services/supabase_service.dart';
+import 'admin_login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String selectedPage;
@@ -377,6 +378,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _showMessage("تم حفظ الإعدادات");
             },
           ),
+
+          const SizedBox(height: 18),
+
+          // دخول الإدارة - يظهر فقط كمدخل للوحة الإدارة
+          _buildAdminLoginTile(),
+
         ],
       ),
     );
@@ -1579,6 +1586,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+
+  Widget _buildAdminLoginTile() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xffE5E7EB),
+        ),
+      ),
+      child: ListTile(
+        leading: const Icon(
+          LucideIcons.shieldCheck,
+          color: Color(0xff2864D7),
+        ),
+        title: const Text(
+          "دخول الإدارة",
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: const Text(
+          "إدارة الاشتراكات والمفاتيح",
+          textAlign: TextAlign.right,
+        ),
+        trailing: const Icon(
+          LucideIcons.chevronLeft,
+        ),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AdminLoginScreen(),
+            ),
+          );
+        },
       ),
     );
   }

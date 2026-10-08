@@ -22,6 +22,7 @@ import 'screens/reports_screen.dart';
 import 'screens/alerts_screen.dart';
 
 import 'screens/settings_screen.dart';
+import 'screens/admin_login_screen.dart';
 
 
 
@@ -127,17 +128,39 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   Future<void> _loadSubscriptionState() async {
     try {
-      // التأكد من وجود جلسة Supabase قبل إنشاء/قراءة سجل التجربة.
-      await SupabaseService.instance.ensureSignedIn();
+      final service = SupabaseService.instance;
 
-      final trial = await SupabaseService.instance.trialInfo;
-      final active = await SupabaseService.instance.hasActiveSubscription;
+      // أولاً نتحقق من المدير قبل إنشاء مستخدم مجهول.
+      // المدير يتجاوز شاشة التفعيل بالكامل.
+      final isAdmin = await service.isAdmin;
+
+      if (isAdmin) {
+        if (!mounted) return;
+
+        setState(() {
+          _subscriptionRequired = false;
+          _subscriptionLoading = false;
+        });
+
+        return;
+      }
+
+      // العملاء فقط يحتاجون جلسة وتجربة/اشتراك.
+      await service.ensureSignedIn();
+
+      final trial = await service.trialInfo;
+      final active = await service.hasActiveSubscription;
 
       if (!mounted) return;
 
       setState(() {
         _trialInfo = trial;
-        _subscriptionRequired = !active && !(trial?.active ?? false);
+
+        // المدير يتجاوز شاشة التفعيل دائمًا.
+        // العملاء: اشتراك فعال أو تجربة مجانية 7 أيام.
+        _subscriptionRequired =
+            !isAdmin && !active && !(trial?.active ?? false);
+
         _subscriptionLoading = false;
       });
     } catch (e) {
@@ -525,26 +548,11 @@ class _AppState extends State<App> with WidgetsBindingObserver {
             _subscriptionRequired = false;
             _subscriptionLoading = false;
           });
+          _loadSubscriptionState();
           // الاشتراك الفعال يتغلب على حالة التجربة المجانية.
           // نعيد تحميل البيانات عند الحاجة دون إظهار شاشة التفعيل مجددًا.
         },
       );
-    }
-
-    if (_loadingLock) {
-
-      return const Material(
-
-        color: Color(0xffF7F9FC),
-
-        child: Center(
-
-          child: CircularProgressIndicator(),
-
-        ),
-
-      );
-
     }
 
 
@@ -1648,7 +1656,12 @@ class _SubscriptionActivationScreenState
                 ),
                 const SizedBox(height: 13),
                 _buildActivateButton(),
-                const SizedBox(height: 21),
+                const SizedBox(height: 8),
+
+                // دخول الإدارة لتجاوز الاشتراك لحساب المدير فقط
+                _buildAdminLoginButton(),
+
+                const SizedBox(height: 13),
                 _buildBenefits(),
                 const SizedBox(height: 18),
                 _buildSecurityNote(),
@@ -2159,6 +2172,32 @@ class _SubscriptionActivationScreenState
       width: 1,
       height: 50,
       color: const Color(0xffE8EDF4),
+    );
+  }
+
+  Widget _buildAdminLoginButton() {
+    return TextButton.icon(
+      onPressed: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AdminLoginScreen(),
+          ),
+        );
+
+        if (!mounted) return;
+        widget.onActivated();
+      },
+      icon: const Icon(
+        Icons.admin_panel_settings_outlined,
+        size: 18,
+      ),
+      label: const Text(
+        'دخول الإدارة',
+        style: TextStyle(
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 

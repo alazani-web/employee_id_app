@@ -361,6 +361,97 @@ class SupabaseService {
     return '••••-••••-••••-${cleaned.substring(cleaned.length - 4).toUpperCase()}';
   }
 
+
+  // ============================
+  // تسجيل دخول المدير
+  // ============================
+
+  Future<bool> adminSignIn({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      await client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      return await isAdmin;
+    } catch (e) {
+      debugPrint('ADMIN LOGIN ERROR => $e');
+      return false;
+    }
+  }
+
+  Future<void> adminSignOut() async {
+    await client.auth.signOut();
+  }
+
+
+  // ============================
+  // إدارة صلاحيات المدير
+  // ============================
+
+  Future<String?> get currentUserRole async {
+    try {
+      final user = client.auth.currentUser;
+      if (user == null || user.email == null) return null;
+
+      final result = await client
+          .from('app_users')
+          .select('role')
+          .eq('email', user.email!)
+          .maybeSingle();
+
+      return result?['role']?.toString();
+    } catch (e) {
+      debugPrint('ROLE ERROR => $e');
+      return null;
+    }
+  }
+
+  Future<bool> get isAdmin async {
+    final role = await currentUserRole;
+    return role == 'admin';
+  }
+
+  Future<bool> canManageLicenses() async {
+    return await isAdmin;
+  }
+
+
+  // ============================
+  // إنشاء مفتاح اشتراك من لوحة الإدارة
+  // ============================
+
+  Future<String> createLicenseKey({
+    required String customerName,
+    required String plan,
+    required int days,
+  }) async {
+    try {
+      final rawKey =
+          'EMP-${DateTime.now().millisecondsSinceEpoch}';
+
+      final hash = sha256
+          .convert(utf8.encode(rawKey))
+          .toString();
+
+      await client.from('activation_keys').insert({
+        'customer_name': customerName,
+        'key_hash': hash,
+        'plan': plan,
+        'duration_days': days,
+        'status': 'available',
+      });
+
+      return rawKey;
+    } catch (e) {
+      debugPrint('CREATE LICENSE ERROR => $e');
+      rethrow;
+    }
+  }
+
   int? _toInt(dynamic value) {
     if (value is int) return value;
     return int.tryParse(value?.toString() ?? '');
