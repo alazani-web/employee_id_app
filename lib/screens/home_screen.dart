@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -63,21 +64,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _documentCount = 0;
   SubscriptionInfo? _subscriptionInfo;
+  TrialInfo? _trialInfo;
   bool _subscriptionLoading = true;
+  Timer? _trialTimer;
 
   @override
   void initState() {
     super.initState();
     _loadDocumentCount();
     _loadSubscriptionInfo();
+    _trialTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => _refreshTrial(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _trialTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshTrial() async {
+    try {
+      final info = await SupabaseService.instance.trialInfo;
+      if (!mounted) return;
+      setState(() {
+        _trialInfo = info;
+      });
+    } catch (_) {}
   }
 
   Future<void> _loadSubscriptionInfo() async {
     try {
       final info = await SupabaseService.instance.subscriptionInfo;
+      final trial = await SupabaseService.instance.trialInfo;
       if (!mounted) return;
       setState(() {
         _subscriptionInfo = info;
+        _trialInfo = trial;
         _subscriptionLoading = false;
       });
     } catch (_) {
@@ -89,12 +114,35 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  int get _trialRemainingDays {
+    final info = _trialInfo;
+    if (info == null) return 0;
+    final seconds = info.trialEnd.difference(DateTime.now()).inSeconds;
+    if (seconds <= 0) return 0;
+    return ((seconds + 86399) ~/ 86400).clamp(0, 7);
+  }
+
+  String _formatDate(DateTime date) {
+    final d = date.day.toString().padLeft(2, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    return '$d/$m/${date.year}';
+  }
+
   String get _subscriptionSubtitle {
     if (_subscriptionLoading) return 'جاري تحميل بيانات الاشتراك...';
+
     final info = _subscriptionInfo;
-    if (info == null) return 'مفتاح التفعيل: غير مفعل';
-    if (!info.active) return 'مفتاح التفعيل: منتهي\nالاشتراك يحتاج إلى تجديد';
-    return 'مفتاح التفعيل: مفعل\nالأيام المتبقية: ${info.remainingDays} يوم';
+    if (info?.active == true) {
+      return 'الاشتراك مفعل\nالأيام المتبقية: ${info!.remainingDays} يوم';
+    }
+
+    final trial = _trialInfo;
+    final days = _trialRemainingDays;
+    if (trial != null && trial.active && days > 0) {
+      return 'التجربة المجانية مفعلة\nالمتبقي: $days ${days == 1 ? 'يوم' : 'أيام'}\nتنتهي: ${_formatDate(trial.trialEnd)}';
+    }
+
+    return 'التجربة المجانية: انتهت\nفعّل اشتراكًا للاستمرار';
   }
 
   Future<void> _loadDocumentCount() async {
@@ -281,14 +329,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
-              InfoCard(
-                title: 'حالة الترخيص',
-                icon: 'assets/icons/badge_check.svg',
+              SubscriptionCard(
+                subscriptionInfo: _subscriptionInfo,
+                trialInfo: _trialInfo,
+                remainingDays: _trialRemainingDays,
                 subtitle: _subscriptionSubtitle,
-                button: 'إدارة الترخيص',
                 onTap: () {
-                  // افتح صفحة التفعيل من خلال نظام التنقل الرئيسي
-                  // حتى يظهر زر الرجوع ولا يتم إنشاء شاشة Settings ثانية.
                   widget.onNavigate?.call('activation');
                 },
               ),
@@ -302,8 +348,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     'آخر نسخة احتياطية\nلا توجد نسخة محفوظة',
                 button: 'إنشاء نسخة احتياطية',
                 onTap: () {
-                  // افتح النسخ الاحتياطي من خلال نظام التنقل الرئيسي
-                  // حتى يظهر زر الرجوع ولا يتم إنشاء شاشة Settings ثانية.
                   widget.onNavigate?.call('backup');
                 },
               ),
@@ -400,98 +444,165 @@ class StatCard extends StatelessWidget {
 
 class InfoCard extends StatelessWidget {
   final String title;
+  final String icon;
   final String subtitle;
   final String button;
-  final String icon;
   final VoidCallback? onTap;
 
   const InfoCard({
     super.key,
     required this.title,
+    required this.icon,
     required this.subtitle,
     required this.button,
-    required this.icon,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: const BoxDecoration(
-                  color: Color(0xffEFF4FF),
-                  shape: BoxShape.circle,
-                ),
-                child: SvgPicture.asset(
-                  icon,
-                  width: 18,
-                  height: 18,
-                  colorFilter:
-                      const ColorFilter.mode(
-                    Color(0xff2864D7),
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ),
-
-              const SizedBox(width: 6),
-
-              Text(
-                title,
+              SvgPicture.asset(icon, width: 24, height: 24),
+              const SizedBox(width: 10),
+              Text(title,
                 style: const TextStyle(
-                  fontSize: 15,
+                  fontSize: 17,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          Text(subtitle,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              color: Color(0xff7A8495),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: onTap,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xff2864D7),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(button,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-          const SizedBox(height: 6),
+class SubscriptionCard extends StatelessWidget {
+  final SubscriptionInfo? subscriptionInfo;
+  final TrialInfo? trialInfo;
+  final int remainingDays;
+  final String subtitle;
+  final VoidCallback? onTap;
 
+  const SubscriptionCard({
+    super.key,
+    required this.subscriptionInfo,
+    required this.trialInfo,
+    required this.remainingDays,
+    required this.subtitle,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = subscriptionInfo?.active == true;
+    final trial = !active && trialInfo != null && trialInfo!.active && remainingDays > 0;
+
+    final color = active
+        ? const Color(0xff2864D7)
+        : trial
+            ? const Color(0xff16A34A)
+            : const Color(0xffDC2626);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withValues(alpha: .25)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 18,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                active ? Icons.verified_rounded : Icons.workspace_premium_rounded,
+                size: 34,
+                color: color,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  active ? 'الاشتراك مفعل' : trial ? 'التجربة المجانية' : 'انتهت التجربة',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
           Text(
             subtitle,
             textAlign: TextAlign.right,
             style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
+              fontSize: 13,
+              height: 1.8,
+              color: Color(0xff475569),
+              fontWeight: FontWeight.w600,
             ),
           ),
-
-          const SizedBox(height: 8),
-
+          const SizedBox(height: 14),
           SizedBox(
-            height: 36,
+            width: double.infinity,
+            height: 44,
             child: ElevatedButton(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    const Color(0xff2864D7),
+                backgroundColor: color,
+                elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               child: Text(
-                button,
+                active ? 'إدارة الاشتراك' : 'تفعيل الاشتراك الآن',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
@@ -501,3 +612,4 @@ class InfoCard extends StatelessWidget {
     );
   }
 }
+

@@ -13,6 +13,7 @@ class ActivationScreen extends StatefulWidget {
 class _ActivationScreenState extends State<ActivationScreen>
     with SingleTickerProviderStateMixin {
   SubscriptionInfo? _info;
+  TrialInfo? _trialInfo;
 
   bool _loading = true;
   bool _deactivating = false;
@@ -64,11 +65,13 @@ class _ActivationScreenState extends State<ActivationScreen>
 
   Future<void> _load() async {
     final info = await SupabaseService.instance.subscriptionInfo;
+    final trial = await SupabaseService.instance.trialInfo;
 
     if (!mounted) return;
 
     setState(() {
       _info = info;
+      _trialInfo = trial;
       _loading = false;
     });
 
@@ -320,6 +323,10 @@ class _ActivationScreenState extends State<ActivationScreen>
     final info = _info;
 
     if (info == null) {
+      if (_trialInfo != null && _trialInfo!.active) {
+        return _buildTrialState();
+      }
+
       return _buildEmptyState();
     }
 
@@ -1034,6 +1041,117 @@ class _ActivationScreenState extends State<ActivationScreen>
                   ),
                 ],
               ),
+      ),
+    );
+  }
+
+
+  Widget _buildTrialState() {
+    final trial = _trialInfo!;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(22),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: const Color(0xffD9E7FF),
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x12000000),
+              blurRadius: 20,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: const Color(0xffECFDF3),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                LucideIcons.gift,
+                size: 45,
+                color: green,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'التجربة المجانية مفعلة',
+              style: TextStyle(
+                fontSize: 23,
+                fontWeight: FontWeight.w900,
+                color: textDark,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'متبقي ${trial.remainingDays} أيام للاستفادة من جميع مزايا النظام',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: textMuted,
+                height: 1.8,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xffF5F8FD),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    LucideIcons.calendarDays,
+                    color: primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'تنتهي في ${_date(trial.trialEnd)}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: textDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+                child: const Text(
+                  'الدخول إلى النظام',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

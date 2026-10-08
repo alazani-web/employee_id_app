@@ -52,6 +52,12 @@ dependencies:
   shared_preferences: ^2.2.2
 
   # ==========================================
+  # Device Identification / Trial Security
+  # ==========================================
+  device_info_plus: ^11.5.0
+  crypto: ^3.0.6
+
+  # ==========================================
   # File Import / Export
   # ==========================================
   file_picker: ^9.1.0
@@ -80,11 +86,13 @@ dependencies:
   # ==========================================
   hijri_core: ^1.1.0
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^5.0.0
+
 
 flutter:
   uses-material-design: true

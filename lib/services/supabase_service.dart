@@ -1,3 +1,8 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -18,6 +23,22 @@ class SubscriptionInfo {
     required this.activatedAt,
     required this.expiresAt,
     required this.remainingDays,
+  });
+}
+
+class TrialInfo {
+  final DateTime trialStart;
+  final DateTime trialEnd;
+  final bool active;
+  final int remainingDays;
+  final int remainingSeconds;
+
+  const TrialInfo({
+    required this.trialStart,
+    required this.trialEnd,
+    required this.active,
+    required this.remainingDays,
+    required this.remainingSeconds,
   });
 }
 
@@ -68,6 +89,105 @@ class SupabaseService {
 
   Future<void> signOut() async {
     await client.auth.signOut();
+  }
+
+  /// Gets a stable device identifier and hashes it before sending it to Supabase.
+  /// Android uses ANDROID_ID, which normally survives app reinstall on the same
+  /// device. iOS uses identifierForVendor.
+  Future<String> _trialDeviceHash() async {
+    final plugin = DeviceInfoPlugin();
+    String raw;
+
+    if (kIsWeb) {
+      final info = await plugin.webBrowserInfo;
+      raw = [
+        'web',
+        info.browserName.name,
+        info.userAgent ?? '',
+        info.platform ?? '',
+      ].join('|');
+    } else {
+      switch (defaultTargetPlatform) {
+        case TargetPlatform.android:
+          final info = await plugin.androidInfo;
+          raw = 'android|${info.id}|${info.model}|${info.brand}';
+          break;
+        case TargetPlatform.iOS:
+          final info = await plugin.iosInfo;
+          raw = 'ios|${info.identifierForVendor ?? ''}|${info.model}';
+          break;
+        case TargetPlatform.windows:
+          final info = await plugin.windowsInfo;
+          raw = 'windows|${info.deviceId}|${info.computerName}';
+          break;
+        case TargetPlatform.macOS:
+          final info = await plugin.macOsInfo;
+          raw = 'macos|${info.systemGUID ?? ''}|${info.model}';
+          break;
+        case TargetPlatform.linux:
+          final info = await plugin.linuxInfo;
+          raw = 'linux|${info.machineId ?? ''}|${info.name}';
+          break;
+        case TargetPlatform.fuchsia:
+          raw = 'fuchsia';
+          break;
+      }
+    }
+
+    return sha256.convert(utf8.encode(raw)).toString();
+  }
+
+  Future<TrialInfo?> get trialInfo async {
+    try {
+      await ensureSignedIn();
+      final deviceHash = await _trialDeviceHash();
+
+      final response = await client.rpc(
+        'start_or_get_trial',
+        params: {'p_device_id_hash': deviceHash},
+      );
+
+      final data = Map<String, dynamic>.from(response as Map);
+      if (data['success'] != true) {
+        return null;
+      }
+
+      final start = DateTime.tryParse(
+        data['trial_start']?.toString() ?? '',
+      );
+      final end = DateTime.tryParse(
+        data['trial_end']?.toString() ?? '',
+      );
+
+      if (start == null || end == null) return null;
+
+      final seconds = int.tryParse(
+            data['remaining_seconds']?.toString() ?? '',
+          ) ??
+          end.difference(DateTime.now()).inSeconds;
+
+      final safeSeconds = seconds < 0 ? 0 : seconds;
+      final active = safeSeconds > 0 &&
+          (data['status']?.toString() ?? '') == 'active';
+
+      final days = active
+          ? ((safeSeconds + 86399) ~/ 86400).clamp(0, 7)
+          : 0;
+
+      return TrialInfo(
+        trialStart: start.toLocal(),
+        trialEnd: end.toLocal(),
+        active: active,
+        remainingDays: days,
+        remainingSeconds: safeSeconds,
+      );
+    } on PostgrestException catch (e) {
+      debugPrint('TRIAL RPC ERROR => ${e.message}');
+      return null;
+    } catch (e) {
+      debugPrint('TRIAL ERROR => $e');
+      return null;
+    }
   }
 
   Future<void> saveActivationKey({

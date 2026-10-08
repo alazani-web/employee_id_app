@@ -71,10 +71,9 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   bool _subscriptionLoading = true;
   bool _subscriptionRequired = false;
+  TrialInfo? _trialInfo;
 
-  // مدة التجربة المجانية. غيّر الرقم فقط إذا أردت مدة مختلفة.
-  static const int _trialDays = 0;
-  static const String _trialStartKey = 'app_trial_start_date';
+  // مدة التجربة المجانية ثابتة في Supabase = 7 أيام.
 
 
   @override
@@ -128,31 +127,24 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   Future<void> _loadSubscriptionState() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      const trialKey = _trialStartKey;
+      // التأكد من وجود جلسة Supabase قبل إنشاء/قراءة سجل التجربة.
+      await SupabaseService.instance.ensureSignedIn();
 
-      DateTime? trialStart;
-      final saved = prefs.getString(trialKey);
-      if (saved != null && saved.isNotEmpty) {
-        trialStart = DateTime.tryParse(saved);
-      }
-
-      trialStart ??= DateTime.now();
-      if (saved == null || saved.isEmpty || DateTime.tryParse(saved) == null) {
-        await prefs.setString(trialKey, trialStart.toIso8601String());
-      }
-
+      final trial = await SupabaseService.instance.trialInfo;
       final active = await SupabaseService.instance.hasActiveSubscription;
-      final trialEnds = trialStart.add(const Duration(days: _trialDays));
-      final expired = DateTime.now().isAfter(trialEnds);
 
       if (!mounted) return;
+
       setState(() {
-        _subscriptionRequired = !active && expired;
+        _trialInfo = trial;
+        _subscriptionRequired = !active && !(trial?.active ?? false);
         _subscriptionLoading = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('SUBSCRIPTION/TRIAL LOAD ERROR => $e');
       if (!mounted) return;
+
+      // إذا تعذر الوصول للسيرفر لا نقفل التطبيق خطأً؛ ننتظر إعادة المحاولة.
       setState(() {
         _subscriptionLoading = false;
         _subscriptionRequired = false;
@@ -298,19 +290,6 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   }
 
-
-
-  void _handleSubscriptionDeactivated() {
-    if (!mounted) return;
-
-    // بعد إلغاء تفعيل الترخيص، نعيد التطبيق مباشرةً
-    // إلى شاشة إدخال مفتاح الاشتراك الإجباري.
-    setState(() {
-      _subscriptionRequired = true;
-      _subscriptionLoading = false;
-      currentPage = 'home';
-    });
-  }
 
 
   void navigate(String page) {
@@ -494,8 +473,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
         onBack: () => navigate('home'),
 
         onLockStateChanged: _handleLockStateChanged,
-
-      onSubscriptionDeactivated: _handleSubscriptionDeactivated,
+        onSubscriptionDeactivated: _handleSubscriptionDeactivated,
 
       );
 
@@ -514,6 +492,17 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   }
 
 
+
+  void _handleSubscriptionDeactivated() {
+    if (!mounted) return;
+
+    setState(() {
+      _subscriptionRequired = true;
+      _subscriptionLoading = false;
+      _trialInfo = null;
+      currentPage = 'home';
+    });
+  }
 
   @override
 
@@ -536,6 +525,8 @@ class _AppState extends State<App> with WidgetsBindingObserver {
             _subscriptionRequired = false;
             _subscriptionLoading = false;
           });
+          // الاشتراك الفعال يتغلب على حالة التجربة المجانية.
+          // نعيد تحميل البيانات عند الحاجة دون إظهار شاشة التفعيل مجددًا.
         },
       );
     }
