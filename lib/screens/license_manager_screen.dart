@@ -272,7 +272,7 @@ class _LicenseManagerScreenState extends State<LicenseManagerScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: color.withOpacity(.10),
+                color: color.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(11),
               ),
               child: Icon(icon, color: color, size: 18),
@@ -387,7 +387,7 @@ class _LicenseManagerScreenState extends State<LicenseManagerScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(.10),
+                    color: statusColor.withValues(alpha: 0.10),
                     borderRadius: BorderRadius.circular(30),
                   ),
                   child: Text(
@@ -483,7 +483,7 @@ class _LicenseManagerScreenState extends State<LicenseManagerScreen> {
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
-        side: BorderSide(color: color.withOpacity(.30)),
+        side: BorderSide(color: color.withValues(alpha: 0.30)),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 11),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -649,7 +649,7 @@ class _LicenseManagerScreenState extends State<LicenseManagerScreen> {
               ),
               if (_working)
                 Container(
-                  color: Colors.black.withOpacity(.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   child: const Center(child: CircularProgressIndicator()),
                 ),
             ],

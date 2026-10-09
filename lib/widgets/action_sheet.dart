@@ -30,7 +30,7 @@ class ActionSheet {
     await showDialog<void>(
       context: context,
       barrierDismissible: true,
-      barrierColor: Colors.black.withOpacity(0.35),
+      barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (dialogContext) => Directionality(
         textDirection: TextDirection.rtl,
         child: Dialog(

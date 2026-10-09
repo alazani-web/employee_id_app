@@ -438,7 +438,7 @@ class RenewalDialog {
           width: 34,
           height: 34,
           decoration: BoxDecoration(
-            color: color.withOpacity(.10),
+            color: color.withValues(alpha: .10),
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,

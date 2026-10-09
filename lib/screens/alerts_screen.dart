@@ -523,7 +523,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: item.iconColor.withOpacity(0.10),
+                  color: item.iconColor.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(item.icon, color: item.iconColor, size: 22),

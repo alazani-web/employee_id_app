@@ -1304,7 +1304,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
         decoration: BoxDecoration(
           color: background,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(.08)),
+          border: Border.all(color: color..withValues(alpha:(.08)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1650,7 +1650,7 @@ class _VisitsScreenState extends State<VisitsScreen> {
                                         width: 34,
                                         height: 34,
                                         decoration: BoxDecoration(
-                                          color: accent.withOpacity(.10),
+                                          color: accent..withValues(alpha:(.10),
                                           borderRadius: BorderRadius.circular(10),
                                         ),
                                         child: Icon(
@@ -2238,10 +2238,10 @@ class _VisitsScreenState extends State<VisitsScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: accent.withOpacity(.12)),
+                    border: Border.all(color: accent..withValues(alpha:(.12)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(.12),
+                        color: Colors.black..withValues(alpha:(.12),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),

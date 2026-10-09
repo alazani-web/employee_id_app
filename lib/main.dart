@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:firebase_core/firebase_core.dart';
 
 import 'app.dart';
 import 'providers/employee_provider.dart';
@@ -10,9 +11,21 @@ import 'providers/visit_provider.dart';
 import 'providers/alert_provider.dart';
 import 'services/notification_service.dart';
 import 'services/supabase_service.dart';
+import 'firebase_options.dart';
+import 'services/firebase_notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ============================================================
+  // Firebase
+  // ============================================================
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await FirebaseNotificationService.instance.initialize();
 
   // ============================================================
   // Supabase

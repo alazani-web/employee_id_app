@@ -140,7 +140,7 @@ class _TopMessageViewState extends State<_TopMessageView>
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: _color.withOpacity(.16),
+                        color: _color.withValues(alpha: 0.16),
                       ),
                       boxShadow: const [
                         BoxShadow(
@@ -156,7 +156,7 @@ class _TopMessageViewState extends State<_TopMessageView>
                           width: 34,
                           height: 34,
                           decoration: BoxDecoration(
-                            color: _color.withOpacity(.10),
+                            color: _color.withValues(alpha: 0.10),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(_icon, color: _color, size: 20),
