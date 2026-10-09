@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/supabase_service.dart';
 
-import 'license_manager_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -25,120 +24,36 @@ class _AdminLoginScreenState
 
 
   Future<void> _login() async {
-
-    final email =
-        emailController.text.trim();
-
-    final password =
-        passwordController.text.trim();
-
+    final email = emailController.text.trim();
+    final password = passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-
-      _message(
-        'أدخل البريد وكلمة المرور',
-      );
-
+      _message('أدخل البريد الإلكتروني وكلمة المرور.');
       return;
     }
 
-
-    setState(() {
-      loading = true;
-    });
-
+    setState(() => loading = true);
 
     try {
-
-      final supabase =
-          Supabase.instance.client;
-
-
-      // تسجيل الدخول
-      final response =
-          await supabase.auth.signInWithPassword(
+      final success = await SupabaseService.instance.adminSignIn(
         email: email,
         password: password,
       );
 
-
-      final user =
-          response.user;
-
-
-      if (user == null) {
-
+      if (!success) {
         throw Exception(
-          'فشل تسجيل الدخول',
+          'تعذر الدخول كمدير. تحقق من البريد وكلمة المرور وصلاحية الحساب.',
         );
-
       }
-
-
-      // التحقق من صلاحية المدير
-      final result =
-          await supabase
-              .from('app_users')
-              .select('role')
-              .eq('email', user.email!)
-              .maybeSingle();
-
-
-      debugPrint('ADMIN AUTH EMAIL: ${user.email}');
-      debugPrint('ADMIN DB RESULT: $result');
-
-      final role =
-          result?['role']?.toString();
-
-
-      if (role != 'admin') {
-
-        await supabase.auth.signOut();
-
-        throw Exception(
-          'ليس لديك صلاحية مدير',
-        );
-
-      }
-
 
       if (!mounted) return;
-
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) =>
-              const LicenseManagerScreen(),
-        ),
-      );
-
-
+      Navigator.of(context).pop(true);
     } catch (e) {
-
-      _message(
-        e.toString()
-            .replaceFirst(
-              'Exception: ',
-              '',
-            ),
-      );
-
-
+      _message(e.toString().replaceFirst('Exception: ', ''));
     } finally {
-
-      if (mounted) {
-
-        setState(() {
-          loading = false;
-        });
-
-      }
-
+      if (mounted) setState(() => loading = false);
     }
-
   }
-
 
   void _message(String text) {
 

@@ -3,10 +3,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class SideMenu extends StatelessWidget {
   final Function(String) onNavigate;
+  final bool isAdmin;
+  final VoidCallback? onAdminLogout;
 
   const SideMenu({
     super.key,
     required this.onNavigate,
+    this.isAdmin = false,
+    this.onAdminLogout,
   });
 
   @override
@@ -125,9 +129,49 @@ class SideMenu extends StatelessWidget {
                       subtitle: "معلومات النظام والإصدار",
                       page: "about",
                     ),
+                    if (isAdmin)
+                      menuItem(
+                        context: context,
+                        icon: LucideIcons.keyRound,
+                        title: "إدارة الاشتراكات",
+                        subtitle: "المفاتيح والعملاء والتفعيل",
+                        page: "license_manager",
+                      ),
                   ],
                 ),
               ),
+              if (isAdmin)
+                Container(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: Color(0xffE5E7EB)),
+                    ),
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: onAdminLogout,
+                      icon: const Icon(LucideIcons.logOut, size: 18, color: Colors.white),
+                      label: const Text(
+                        'تسجيل الخروج من الإدارة',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xffD92D20),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

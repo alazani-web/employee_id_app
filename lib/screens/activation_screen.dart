@@ -1156,6 +1156,206 @@ class _ActivationScreenState extends State<ActivationScreen>
     );
   }
 
+
+  Future<void> _openActivationDialog() async {
+    final controller = TextEditingController();
+    bool activating = false;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !activating,
+      builder: (dialogContext) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: StatefulBuilder(
+            builder: (context, setDialogState) {
+              Future<void> submit() async {
+                final key = controller.text.trim();
+
+                if (key.isEmpty || activating) {
+                  return;
+                }
+
+                setDialogState(() {
+                  activating = true;
+                });
+
+                final result =
+                    await SupabaseService.instance.activateSubscription(key);
+
+                if (!mounted) return;
+
+                if (result.success) {
+                  Navigator.of(dialogContext).pop();
+                  await _load();
+
+                  if (!mounted) return;
+
+                  _showMessage(
+                    result.message,
+                    success: true,
+                  );
+                } else {
+                  setDialogState(() {
+                    activating = false;
+                  });
+
+                  _showMessage(
+                    result.message,
+                    success: false,
+                  );
+                }
+              }
+
+              return AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                titlePadding: const EdgeInsets.fromLTRB(
+                  24,
+                  24,
+                  24,
+                  8,
+                ),
+                contentPadding: const EdgeInsets.fromLTRB(
+                  24,
+                  8,
+                  24,
+                  20,
+                ),
+                title: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xffEEF4FF),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: const Icon(
+                        LucideIcons.keyRound,
+                        color: primary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'تفعيل الاشتراك',
+                        style: TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                          color: textDark,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'أدخل مفتاح الاشتراك الذي حصلت عليه من الإدارة.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 1.6,
+                          color: textMuted,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: controller,
+                      enabled: !activating,
+                      textDirection: TextDirection.ltr,
+                      textAlign: TextAlign.center,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => submit(),
+                      decoration: InputDecoration(
+                        hintText: 'XXXX-XXXX-XXXX-XXXX',
+                        prefixIcon: const Icon(
+                          LucideIcons.lockKeyhole,
+                          color: primary,
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xffF8FAFD),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: const BorderSide(
+                            color: Color(0xffDCE5F2),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: const BorderSide(
+                            color: Color(0xffDCE5F2),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15),
+                          borderSide: const BorderSide(
+                            color: primary,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: activating ? null : submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        child: activating
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    LucideIcons.keyRound,
+                                    size: 19,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'تحقق وتفعيل الاشتراك',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    controller.dispose();
+  }
+
   Widget _buildEmptyState() {
     return SafeArea(
       child: Center(
@@ -1243,6 +1443,39 @@ class _ActivationScreenState extends State<ActivationScreen>
                         ),
                       ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: _openActivationDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          LucideIcons.keyRound,
+                          size: 19,
+                        ),
+                        SizedBox(width: 9),
+                        Text(
+                          'تفعيل اشتراك جديد',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],

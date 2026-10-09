@@ -60,6 +60,76 @@ class ActivationResult {
   });
 }
 
+class LicenseRecord {
+  final String id;
+  final String customerName;
+  final String plan;
+  final int durationDays;
+  final String status;
+  final String keyHash;
+  final DateTime? activatedAt;
+  final DateTime? expiresAtValue;
+  final DateTime? createdAt;
+  final String? activatedBy;
+
+  const LicenseRecord({
+    required this.id,
+    required this.customerName,
+    required this.plan,
+    required this.durationDays,
+    required this.status,
+    required this.keyHash,
+    this.activatedAt,
+    this.expiresAtValue,
+    this.createdAt,
+    this.activatedBy,
+  });
+
+  factory LicenseRecord.fromMap(Map<String, dynamic> map) {
+    DateTime? parseDate(dynamic value) =>
+        value == null ? null : DateTime.tryParse(value.toString());
+
+    return LicenseRecord(
+      id: (map['id'] ?? '').toString(),
+      customerName: (map['customer_name'] ?? 'بدون اسم').toString(),
+      plan: (map['plan'] ?? 'غير محددة').toString(),
+      durationDays: int.tryParse((map['duration_days'] ?? '0').toString()) ?? 0,
+      status: (map['status'] ?? 'unknown').toString().toLowerCase(),
+      keyHash: (map['key_hash'] ?? '').toString(),
+      activatedAt: parseDate(map['activated_at']),
+      expiresAtValue: parseDate(map['expires_at']),
+      createdAt: parseDate(map['created_at']),
+      activatedBy: map['activated_by']?.toString(),
+    );
+  }
+
+  bool get isActive {
+    if (status != 'active') return false;
+    if (activatedAt == null) return true;
+    return DateTime.now().isBefore(
+      activatedAt!.add(Duration(days: durationDays)),
+    );
+  }
+
+  bool get isExpired {
+    if (status == 'expired') return true;
+    if (status != 'active' || activatedAt == null) return false;
+    return !DateTime.now().isBefore(
+      activatedAt!.add(Duration(days: durationDays)),
+    );
+  }
+
+  int get remainingDays {
+    if (!isActive || activatedAt == null) return 0;
+    final end = activatedAt!.add(Duration(days: durationDays));
+    final seconds = end.difference(DateTime.now()).inSeconds;
+    return seconds <= 0 ? 0 : (seconds + 86399) ~/ 86400;
+  }
+
+  DateTime? get expiresAt => expiresAtValue ?? activatedAt?.add(Duration(days: durationDays));
+}
+
+
 class SupabaseService {
   SupabaseService._();
 
@@ -372,11 +442,15 @@ class SupabaseService {
   }) async {
     try {
       await client.auth.signInWithPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
 
-      return await isAdmin;
+      final allowed = await isAdmin;
+      if (!allowed) {
+        await client.auth.signOut();
+      }
+      return allowed;
     } catch (e) {
       debugPrint('ADMIN LOGIN ERROR => $e');
       return false;
@@ -395,15 +469,16 @@ class SupabaseService {
   Future<String?> get currentUserRole async {
     try {
       final user = client.auth.currentUser;
-      if (user == null || user.email == null) return null;
+      if (user == null) return null;
 
-      final result = await client
-          .from('app_users')
-          .select('role')
-          .eq('email', user.email!)
-          .maybeSingle();
+      final isAdminResult = await client.rpc(
+        'is_current_user_admin',
+      );
 
-      return result?['role']?.toString();
+      return isAdminResult == true ? 'admin' : null;
+    } on PostgrestException catch (e) {
+      debugPrint('ROLE RPC ERROR => ${e.message}');
+      return null;
     } catch (e) {
       debugPrint('ROLE ERROR => $e');
       return null;
@@ -411,8 +486,22 @@ class SupabaseService {
   }
 
   Future<bool> get isAdmin async {
-    final role = await currentUserRole;
-    return role == 'admin';
+    try {
+      final user = client.auth.currentUser;
+      if (user == null) return false;
+
+      final result = await client.rpc(
+        'is_current_user_admin',
+      );
+
+      return result == true;
+    } on PostgrestException catch (e) {
+      debugPrint('ADMIN RPC ERROR => ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('ADMIN CHECK ERROR => $e');
+      return false;
+    }
   }
 
   Future<bool> canManageLicenses() async {
@@ -424,28 +513,135 @@ class SupabaseService {
   // إنشاء مفتاح اشتراك من لوحة الإدارة
   // ============================
 
+  /// Reads license rows through an admin-only server function.
+  Future<List<LicenseRecord>> getAdminLicenseRecords() async {
+    final result = await client.rpc('admin_list_license_keys');
+    if (result is! List) {
+      throw Exception('استجابة قائمة الاشتراكات غير صحيحة.');
+    }
+
+    return result
+        .whereType<Map>()
+        .map((row) => LicenseRecord.fromMap(
+              Map<String, dynamic>.from(row),
+            ))
+        .toList();
+  }
+
+
+  /// Renews a license through an admin-only database RPC.
+  Future<void> adminRenewLicenseKey({
+    required String keyId,
+    required int additionalDays,
+  }) async {
+    if (additionalDays <= 0) throw Exception('مدة التجديد غير صحيحة.');
+    try {
+      final result = await client.rpc(
+        'admin_renew_license_key',
+        params: {'p_key_id': keyId, 'p_additional_days': additionalDays},
+      );
+      if (result is Map && result['success'] == false) {
+        throw Exception((result['message'] ?? 'تعذر تجديد الاشتراك').toString());
+      }
+    } on PostgrestException catch (e) {
+      throw Exception(e.message.isNotEmpty ? e.message : 'تعذر تجديد الاشتراك.');
+    }
+  }
+
+  /// Cancels a license administratively without returning it to available status.
+  Future<void> adminCancelLicenseKey({required String keyId}) async {
+    try {
+      final result = await client.rpc(
+        'admin_cancel_license_key',
+        params: {'p_key_id': keyId},
+      );
+      if (result is Map && result['success'] == false) {
+        throw Exception((result['message'] ?? 'تعذر إلغاء الاشتراك').toString());
+      }
+    } on PostgrestException catch (e) {
+      throw Exception(e.message.isNotEmpty ? e.message : 'تعذر إلغاء الاشتراك.');
+    }
+  }
+
   Future<String> createLicenseKey({
     required String customerName,
     required String plan,
     required int days,
   }) async {
+    final cleanCustomerName = customerName.trim();
+    final cleanPlan = plan.trim().toLowerCase();
+
+    if (cleanCustomerName.isEmpty) {
+      throw Exception('اسم العميل مطلوب.');
+    }
+
+    const allowedPlans = {'basic', 'premium', 'pro'};
+
+    if (!allowedPlans.contains(cleanPlan)) {
+      throw Exception('الباقة المحددة غير صالحة.');
+    }
+
+    if (days <= 0) {
+      throw Exception('مدة الاشتراك غير صالحة.');
+    }
+
     try {
-      final rawKey =
-          'EMP-${DateTime.now().millisecondsSinceEpoch}';
+      final user = client.auth.currentUser;
 
-      final hash = sha256
-          .convert(utf8.encode(rawKey))
-          .toString();
+      if (user == null) {
+        throw Exception('جلسة المدير غير موجودة. سجل دخول الإدارة مرة أخرى.');
+      }
 
-      await client.from('activation_keys').insert({
-        'customer_name': customerName,
-        'key_hash': hash,
-        'plan': plan,
-        'duration_days': days,
-        'status': 'available',
-      });
+      // إنشاء المفتاح يتم على الخادم عن طريق RPC،
+      // حتى لا نمنح مستخدمي التطبيق صلاحية INSERT مباشرة
+      // على جدول activation_keys.
+      final response = await client.rpc(
+        'create_license_key',
+        params: {
+          'p_customer_name': cleanCustomerName,
+          'p_plan': cleanPlan,
+          'p_days': days,
+        },
+      );
+
+      if (response == null) {
+        throw Exception('لم يرجع الخادم مفتاح الاشتراك.');
+      }
+
+      final rawKey = response.toString().trim();
+
+      if (rawKey.isEmpty) {
+        throw Exception('تم إنشاء العملية لكن لم يتم استلام المفتاح.');
+      }
+
+      debugPrint(
+        'CREATE LICENSE SUCCESS => user=${user.id}, '
+        'plan=$cleanPlan, days=$days',
+      );
 
       return rawKey;
+    } on PostgrestException catch (e) {
+      debugPrint('CREATE LICENSE RPC ERROR => ${e.message}');
+      debugPrint('CREATE LICENSE RPC CODE => ${e.code}');
+      debugPrint('CREATE LICENSE RPC DETAILS => ${e.details}');
+      debugPrint('CREATE LICENSE RPC HINT => ${e.hint}');
+
+      final message = e.message.trim();
+      final details = e.details?.toString().trim() ?? '';
+      final hint = e.hint?.trim() ?? '';
+
+      final diagnostic = [
+        if (message.isNotEmpty) message,
+        if (details.isNotEmpty && details != 'null') 'التفاصيل: $details',
+        if (hint.isNotEmpty && hint != 'null') 'التلميح: $hint',
+        if (e.code != null && e.code!.isNotEmpty) 'الكود: ${e.code}',
+      ].join(' | ');
+
+      throw Exception(
+        diagnostic.isNotEmpty
+            ? diagnostic
+            : 'تعذر إنشاء مفتاح الاشتراك من الخادم.',
+      );
     } catch (e) {
       debugPrint('CREATE LICENSE ERROR => $e');
       rethrow;

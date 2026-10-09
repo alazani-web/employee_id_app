@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/material.dart';
 
@@ -23,6 +24,8 @@ import 'screens/alerts_screen.dart';
 
 import 'screens/settings_screen.dart';
 import 'screens/admin_login_screen.dart';
+import 'screens/license_manager_screen.dart';
+import 'screens/admin_key_creation_screen.dart';
 
 
 
@@ -72,7 +75,9 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
   bool _subscriptionLoading = true;
   bool _subscriptionRequired = false;
+  bool _isAdmin = false;
   TrialInfo? _trialInfo;
+  Timer? _subscriptionExpiryTimer;
 
   // مدة التجربة المجانية ثابتة في Supabase = 7 أيام.
 
@@ -87,7 +92,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
     _mainPages = [
 
-      HomeScreen(onNavigate: navigate),
+      HomeScreen(onNavigate: navigate, isAdmin: _isAdmin),
 
       const EmployeesScreen(),
 
@@ -119,6 +124,7 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   void dispose() {
 
     WidgetsBinding.instance.removeObserver(this);
+    _subscriptionExpiryTimer?.cancel();
 
     super.dispose();
 
@@ -130,7 +136,10 @@ class _AppState extends State<App> with WidgetsBindingObserver {
     try {
       final service = SupabaseService.instance;
 
-      // أولاً نتحقق من المدير قبل إنشاء مستخدم مجهول.
+      // إلغاء أي مؤقت سابق حتى لا تتكرر فحوصات الانتهاء.
+      _subscriptionExpiryTimer?.cancel();
+      _subscriptionExpiryTimer = null;
+
       // المدير يتجاوز شاشة التفعيل بالكامل.
       final isAdmin = await service.isAdmin;
 
@@ -138,8 +147,11 @@ class _AppState extends State<App> with WidgetsBindingObserver {
         if (!mounted) return;
 
         setState(() {
+          _isAdmin = true;
           _subscriptionRequired = false;
           _subscriptionLoading = false;
+          _trialInfo = null;
+          _mainPages[0] = HomeScreen(onNavigate: navigate, isAdmin: true);
         });
 
         return;
@@ -149,28 +161,57 @@ class _AppState extends State<App> with WidgetsBindingObserver {
       await service.ensureSignedIn();
 
       final trial = await service.trialInfo;
-      final active = await service.hasActiveSubscription;
+      final subscription = await service.subscriptionInfo;
+      final active = subscription?.active == true;
 
       if (!mounted) return;
 
+      final trialActive = trial?.active == true;
+      final subscriptionRequired = !active && !trialActive;
+
       setState(() {
+        _isAdmin = false;
         _trialInfo = trial;
-
-        // المدير يتجاوز شاشة التفعيل دائمًا.
-        // العملاء: اشتراك فعال أو تجربة مجانية 7 أيام.
-        _subscriptionRequired =
-            !isAdmin && !active && !(trial?.active ?? false);
-
+        _subscriptionRequired = subscriptionRequired;
         _subscriptionLoading = false;
+        _mainPages[0] = HomeScreen(onNavigate: navigate, isAdmin: false);
       });
+
+      // إذا كانت التجربة أو الاشتراك ما زالا فعالين، نحدد موعدًا
+      // لإعادة الفحص تلقائيًا عند الانتهاء حتى لا يبقى التطبيق مفتوحًا
+      // بعد انتهاء الترخيص.
+      DateTime? nextExpiry;
+
+      if (active && subscription != null) {
+        nextExpiry = subscription.expiresAt;
+      } else if (trialActive && trial != null) {
+        nextExpiry = trial.trialEnd;
+      }
+
+      if (nextExpiry != null && mounted) {
+        final delay = nextExpiry.difference(DateTime.now());
+        final safeDelay = delay.isNegative
+            ? const Duration(seconds: 1)
+            : delay + const Duration(seconds: 1);
+
+        _subscriptionExpiryTimer = Timer(safeDelay, () {
+          if (mounted) {
+            _loadSubscriptionState();
+          }
+        });
+      }
     } catch (e) {
       debugPrint('SUBSCRIPTION/TRIAL LOAD ERROR => $e');
       if (!mounted) return;
 
-      // إذا تعذر الوصول للسيرفر لا نقفل التطبيق خطأً؛ ننتظر إعادة المحاولة.
+      // لا نفتح صلاحيات مدفوعة بسبب خطأ مؤقت.
+      // إذا كانت هناك بيانات تجربة/اشتراك معروفة محليًا نحتفظ بها،
+      // وإلا نترك شاشة التفعيل هي الحالة الآمنة.
       setState(() {
         _subscriptionLoading = false;
-        _subscriptionRequired = false;
+        if (_trialInfo == null) {
+          _subscriptionRequired = true;
+        }
       });
     }
   }
@@ -316,26 +357,21 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
 
   void navigate(String page) {
-
     if (!mounted) return;
 
+    // إغلاق القائمة الجانبية فقط عندما تكون مفتوحة بالفعل.
+    // تجنّب استدعاء إغلاق الدرج أثناء الانتقال من صفحة الإدارة إلى الرئيسية.
+    final scaffold = scaffoldKey.currentState;
+    if (scaffold != null && scaffold.isEndDrawerOpen) {
+      scaffold.closeEndDrawer();
+    }
 
-
-    // إغلاق القائمة الجانبية
-
-    scaffoldKey.currentState?.closeEndDrawer();
-
-
+    if (currentPage == page) return;
 
     setState(() {
-
       currentPage = page;
-
     });
-
   }
-
-
 
   /// مؤشر الصفحة داخل IndexedStack.
 
@@ -486,6 +522,12 @@ class _AppState extends State<App> with WidgetsBindingObserver {
 
 
   Widget _buildPage() {
+    if (currentPage == 'activation' && _isAdmin) {
+      return AdminKeyCreationScreen(onBack: () => navigate('home'));
+    }
+    if (currentPage == 'license_manager' && _isAdmin) {
+      return LicenseManagerScreen(onBack: () => navigate('home'));
+    }
 
     if (!_isMainPage) {
 
@@ -515,6 +557,41 @@ class _AppState extends State<App> with WidgetsBindingObserver {
   }
 
 
+
+  Future<void> _logoutAdmin() async {
+    scaffoldKey.currentState?.closeEndDrawer();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تسجيل الخروج'),
+        content: const Text('هل تريد تسجيل الخروج من حساب الإدارة؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('تسجيل الخروج'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await SupabaseService.instance.adminSignOut();
+    } catch (e) {
+      debugPrint('ADMIN LOGOUT ERROR => $e');
+    }
+    if (!mounted) return;
+    setState(() {
+      _isAdmin = false;
+      currentPage = 'home';
+      _subscriptionLoading = true;
+      _mainPages[0] = HomeScreen(onNavigate: navigate, isAdmin: false);
+    });
+    await _loadSubscriptionState();
+  }
 
   void _handleSubscriptionDeactivated() {
     if (!mounted) return;
@@ -549,8 +626,17 @@ class _AppState extends State<App> with WidgetsBindingObserver {
             _subscriptionLoading = false;
           });
           _loadSubscriptionState();
-          // الاشتراك الفعال يتغلب على حالة التجربة المجانية.
-          // نعيد تحميل البيانات عند الحاجة دون إظهار شاشة التفعيل مجددًا.
+        },
+        onAdminLoginSuccess: () {
+          if (!mounted) return;
+          setState(() {
+            _isAdmin = true;
+            _subscriptionRequired = false;
+            _subscriptionLoading = false;
+            _trialInfo = null;
+            currentPage = 'home';
+            _mainPages[0] = HomeScreen(onNavigate: navigate, isAdmin: true);
+          });
         },
       );
     }
@@ -570,9 +656,9 @@ class _AppState extends State<App> with WidgetsBindingObserver {
           // القائمة الجانبية
 
           endDrawer: SideMenu(
-
             onNavigate: navigate,
-
+            isAdmin: _isAdmin,
+            onAdminLogout: _logoutAdmin,
           ),
 
 
@@ -1305,10 +1391,12 @@ class _AppLockScreenState extends State<AppLockScreen> {
 
 class SubscriptionActivationScreen extends StatefulWidget {
   final VoidCallback onActivated;
+  final VoidCallback onAdminLoginSuccess;
 
   const SubscriptionActivationScreen({
     super.key,
     required this.onActivated,
+    required this.onAdminLoginSuccess,
   });
 
   @override
@@ -1656,12 +1744,9 @@ class _SubscriptionActivationScreenState
                 ),
                 const SizedBox(height: 13),
                 _buildActivateButton(),
-                const SizedBox(height: 8),
-
-                // دخول الإدارة لتجاوز الاشتراك لحساب المدير فقط
+                const SizedBox(height: 7),
                 _buildAdminLoginButton(),
-
-                const SizedBox(height: 13),
+                const SizedBox(height: 21),
                 _buildBenefits(),
                 const SizedBox(height: 18),
                 _buildSecurityNote(),
@@ -2178,25 +2263,17 @@ class _SubscriptionActivationScreenState
   Widget _buildAdminLoginButton() {
     return TextButton.icon(
       onPressed: () async {
-        await Navigator.push(
+        final loggedIn = await Navigator.push<bool>(
           context,
-          MaterialPageRoute(
-            builder: (_) => AdminLoginScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const AdminLoginScreen()),
         );
-
-        if (!mounted) return;
-        widget.onActivated();
+        if (!mounted || loggedIn != true) return;
+        widget.onAdminLoginSuccess();
       },
-      icon: const Icon(
-        Icons.admin_panel_settings_outlined,
-        size: 18,
-      ),
+      icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
       label: const Text(
         'دخول الإدارة',
-        style: TextStyle(
-          fontWeight: FontWeight.w800,
-        ),
+        style: TextStyle(fontWeight: FontWeight.w800),
       ),
     );
   }

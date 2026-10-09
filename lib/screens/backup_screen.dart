@@ -6,6 +6,7 @@ import '../providers/alert_provider.dart';
 import '../providers/employee_provider.dart';
 import '../providers/visit_provider.dart';
 import '../services/local_backup_service.dart';
+import '../services/cloud_backup_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/top_message.dart';
 
@@ -140,6 +141,140 @@ class _BackupScreenState extends State<BackupScreen> {
     }
   }
 
+
+  Future<Map<String, String>?> _askCredentials({required bool create}) async {
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: Text(create ? 'إنشاء حساب للنسخ السحابي' : 'تسجيل الدخول للنسخ السحابي'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
+                  validator: (v) => (v == null || !v.trim().contains('@')) ? 'أدخل بريدًا صحيحًا' : null,
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'كلمة المرور (8 أحرف على الأقل)'),
+                  validator: (v) => (v == null || v.length < 8) ? 'كلمة المرور قصيرة' : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() != true) return;
+                Navigator.pop(dialogContext, {
+                  'email': emailController.text.trim(),
+                  'password': passwordController.text,
+                });
+              },
+              child: Text(create ? 'إنشاء الحساب' : 'دخول'),
+            ),
+          ],
+        ),
+      ),
+    );
+    emailController.dispose();
+    passwordController.dispose();
+    return result;
+  }
+
+  Future<void> _ensureCloudAccount() async {
+    final service = CloudBackupService.instance;
+    if (service.hasAccount) return;
+
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('حساب النسخ السحابي'),
+          content: const Text('أنشئ حسابًا أو سجّل الدخول لاستعادة نسختك على أجهزتك الأخرى.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'cancel'), child: const Text('إلغاء')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext, 'login'), child: const Text('تسجيل الدخول')),
+            ElevatedButton(onPressed: () => Navigator.pop(dialogContext, 'create'), child: const Text('إنشاء حساب')),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || choice == 'cancel') throw Exception('تم إلغاء العملية.');
+    final credentials = await _askCredentials(create: choice == 'create');
+    if (credentials == null) throw Exception('تم إلغاء العملية.');
+    if (choice == 'create') {
+      await service.createAccount(email: credentials['email']!, password: credentials['password']!);
+    } else {
+      await service.signIn(email: credentials['email']!, password: credentials['password']!);
+    }
+  }
+
+  Future<void> _createCloudBackup() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await _ensureCloudAccount();
+      await CloudBackupService.instance.uploadBackup();
+      if (!mounted) return;
+      TopMessage.show(context, 'تم رفع النسخة الاحتياطية إلى حسابك السحابي بنجاح');
+    } catch (e) {
+      if (!mounted) return;
+      TopMessage.show(context, _cleanError(e), type: TopMessageType.error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _restoreCloudBackup() async {
+    if (_busy) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('استعادة النسخة السحابية'),
+          content: const Text('ستُستبدل البيانات المحلية القابلة للاستعادة بمحتويات النسخة السحابية. تأكد من إنشاء نسخة محلية حديثة أولًا. هل تريد المتابعة؟'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('إلغاء')),
+            ElevatedButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('استعادة')),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await _ensureCloudAccount();
+      await CloudBackupService.instance.restoreBackup();
+      await context.read<EmployeeProvider>().reloadFromStorage();
+      await context.read<VisitProvider>().reloadFromStorage();
+      await context.read<AlertProvider>().refreshDocuments();
+      await NotificationService.instance.syncStoredData();
+      if (!mounted) return;
+      await _loadLastBackup();
+      TopMessage.show(context, 'تمت استعادة النسخة السحابية بنجاح');
+    } catch (e) {
+      if (!mounted) return;
+      TopMessage.show(context, _cleanError(e), type: TopMessageType.error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   String _cleanError(Object error) {
     return error
         .toString()
@@ -196,23 +331,15 @@ class _BackupScreenState extends State<BackupScreen> {
               _buildActionButton(
                 title: 'إنشاء نسخة سحابية',
                 icon: LucideIcons.cloudUpload,
-                color: const Color(0xffCBD5E1),
-                onPressed: () => TopMessage.show(
-                  context,
-                  'النسخ السحابي غير مفعل حاليًا',
-                  type: TopMessageType.info,
-                ),
+                color: const Color(0xff2864D7),
+                onPressed: _createCloudBackup,
               ),
               const SizedBox(height: 10),
               _buildActionButton(
                 title: 'استعادة نسخة سحابية',
                 icon: LucideIcons.cloudDownload,
-                color: const Color(0xffCBD5E1),
-                onPressed: () => TopMessage.show(
-                  context,
-                  'الاستعادة السحابية غير مفعلة حاليًا',
-                  type: TopMessageType.info,
-                ),
+                color: const Color(0xff374151),
+                onPressed: _restoreCloudBackup,
               ),
             ],
           ),
@@ -343,7 +470,7 @@ class _BackupScreenState extends State<BackupScreen> {
         onPressed: _busy ? null : onPressed,
         icon: Icon(icon, size: 18),
         label: Text(
-          _busy && title == 'إنشاء نسخة محلية'
+          _busy && (title == 'إنشاء نسخة محلية' || title == 'إنشاء نسخة سحابية' || title == 'استعادة نسخة سحابية' || title == 'استعادة نسخة محلية')
               ? 'جاري التنفيذ...'
               : title,
           style: const TextStyle(
@@ -354,9 +481,7 @@ class _BackupScreenState extends State<BackupScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor:
-              color == const Color(0xffCBD5E1)
-                  ? const Color(0xff64748B)
-                  : Colors.white,
+              Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

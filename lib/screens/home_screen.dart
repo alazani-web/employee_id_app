@@ -14,10 +14,12 @@ import '../services/supabase_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final ValueChanged<String>? onNavigate;
+  final bool isAdmin;
 
   const HomeScreen({
     super.key,
     this.onNavigate,
+    this.isAdmin = false,
   });
 
   @override
@@ -329,17 +331,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
-              SubscriptionCard(
-                subscriptionInfo: _subscriptionInfo,
-                trialInfo: _trialInfo,
-                remainingDays: _trialRemainingDays,
-                subtitle: _subscriptionSubtitle,
-                onTap: () {
-                  widget.onNavigate?.call('activation');
-                },
-              ),
-
-              const SizedBox(height: 12),
+              if (!widget.isAdmin) ...[
+                SubscriptionCard(
+                  subscriptionInfo: _subscriptionInfo,
+                  trialInfo: _trialInfo,
+                  remainingDays: _trialRemainingDays,
+                  subtitle: _subscriptionSubtitle,
+                  onTap: () {
+                    widget.onNavigate?.call('activation');
+                  },
+                ),
+                const SizedBox(height: 12),
+              ],
 
               InfoCard(
                 title: 'النسخ الاحتياطي',
